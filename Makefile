@@ -1,7 +1,10 @@
-all: build/tdlib/Makefile build/td_static
+all: build/libraylib.a build/tdlib/Makefile build/td_static
 	cmake -B build/td_static -S .
 	make -C build/td_static
 	mv build/td_static/stg build/
+
+build/libraylib.a:
+	make -C raylib/src RAYLIB_RELEASE_PATH=../../build
 
 build/tdlib/libtdapi.a: td build build/tdlib
 	su -l
