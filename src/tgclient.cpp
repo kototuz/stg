@@ -123,7 +123,6 @@ void tgclient::process_input()
             } else {
                 chat::push_msg((int *)text.c_str(), text.length(), (int*)L"You", 3);
             }
-            ted::clear();
             break;
 
         case WAIT_CODE:
@@ -141,6 +140,7 @@ void tgclient::process_input()
             break;
     }
 
+    ted::clear();
 }
 
 HANDLER_IMPL(updateAuthorizationState, auth_update)
@@ -163,19 +163,19 @@ HANDLER_IMPL(authorizationStateWaitTdlibParameters, wait_params)
     params->device_model_ = "Desktop";
     params->system_version_ = "Debian 12";
     params->application_version_ = "0.1";
-    puts("Sending tdlib parameters...");
+    ted::set_placeholder(L"sending tdlib parameters...");
     manager.send(client_id, Object_handler_id, td_api::move_object_as<td_api::Function>(params));
 }
 
 HANDLER_IMPL(authorizationStateReady, update)
 {
-    puts("You are authorized!!!");
+    ted::set_placeholder(L"authorized");
     state = State::FREETIME;
 }
 
 HANDLER_IMPL(authorizationStateWaitPhoneNumber, auth_state)
 {
-    puts("Waiting phone number...");
+    ted::set_placeholder(L"phone number");
     state = State::WAIT_PHONE_NUMBER;
 }
 
@@ -184,12 +184,12 @@ HANDLER_IMPL(Object, answer)
     if (answer->get_id() == td_api::error::ID) {
         auto err = td_api::move_object_as<td_api::error>(answer);
         std::wstring msg_as_wstr = std::wstring(err->message_.begin(), err->message_.end());
-        chat::push_err((int *)msg_as_wstr.c_str());
+        ted::set_placeholder(msg_as_wstr.c_str());
     }
 }
 
 HANDLER_IMPL(authorizationStateWaitCode, auth_state)
 {
-    puts("Waiting code...");
+    ted::set_placeholder(L"code");
     state = State::WAIT_CODE;
 }

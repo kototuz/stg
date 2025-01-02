@@ -9,6 +9,7 @@
 #include "common.h"
 
 #define MAX_MSG_LEN 4096
+#define MAX_PLACEHOLDER_LEN 32
 
 struct Pos {
     size_t col;
@@ -19,6 +20,8 @@ static common::Lines ted_lines;
 static Pos ted_cursor_pos;
 static size_t ted_max_line_len;
 static int ted_buffer[MAX_MSG_LEN];
+static wchar_t ted_placeholder[MAX_PLACEHOLDER_LEN];
+static size_t ted_placeholder_len;
 
 static void move_cursor_to_ptr(int *text_ptr)
 {
@@ -63,8 +66,15 @@ void ted::render()
     Vector2 pos = { .y = ((float)(DEFAULT_HEIGHT - ted_lines.len*FONT_SIZE)) };
     DrawRectangle(0, pos.y, DEFAULT_WIDTH, DEFAULT_HEIGHT, TED_BG_COLOR);
 
-    // Render text
-    common::draw_lines(pos, ted_lines, TED_FG_COLOR);
+    // Render placeholder or text if it exists
+    if (ted_lines.text_len == 0) {
+        DrawTextCodepoints(
+                common::state.font,
+                (int*)ted_placeholder, ted_placeholder_len,
+                pos, FONT_SIZE, 0, TED_PLACEHOLDER_COLOR);
+    } else {
+        common::draw_lines(pos, ted_lines, TED_FG_COLOR);
+    }
 
     // Render cursor
     pos.x = ted_cursor_pos.col*common::state.glyph_width + 1;
@@ -218,4 +228,16 @@ float ted::get_height()
 std::wstring ted::get_text()
 {
     return std::wstring((wchar_t *)ted_lines.text, ted_lines.text_len);
+}
+
+void ted::set_placeholder(const wchar_t *text)
+{
+    ted_placeholder_len = wcslen(text);
+    if (ted_placeholder_len > MAX_PLACEHOLDER_LEN) {
+        memcpy(ted_placeholder, text, (MAX_PLACEHOLDER_LEN-1) * sizeof(int));
+        ted_placeholder[MAX_PLACEHOLDER_LEN-1] = L'…';
+        ted_placeholder_len = MAX_PLACEHOLDER_LEN;
+    } else {
+        memcpy(ted_placeholder, text, ted_placeholder_len * sizeof(int));
+    }
 }

@@ -23,6 +23,8 @@ namespace ted {
     void delete_symbols(size_t count);
     void delete_word();
     void delete_line();
+    void set_placeholder(const wchar_t *text);
+    void set_placeholder(const wchar_t *text, size_t len);
     float get_height();
     std::wstring get_text();
 }

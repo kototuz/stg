@@ -18,10 +18,11 @@
 #define MSG_TEXT_PADDING      15.0f
 #define MSG_AUTHOR_NAME_COLOR GREEN
 
-#define TED_BG_COLOR     MSG_BG_COLOR
-#define TED_FG_COLOR     WHITE
-#define TED_CURSOR_CODE  L'▏'
-#define TED_CURSOR_COLOR WHITE
+#define TED_BG_COLOR          MSG_BG_COLOR
+#define TED_FG_COLOR          WHITE
+#define TED_CURSOR_CODE       L'▏'
+#define TED_CURSOR_COLOR      WHITE
+#define TED_PLACEHOLDER_COLOR Color{0x40, 0x40, 0x40, 0xff}
 
 #define EMACS_KEYMAP
 
