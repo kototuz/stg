@@ -9,11 +9,21 @@
 #include "ted.h"
 #include "config.h"
 
-chat::State chat::state;
+struct Message {
+    common::Lines lines;
+    int *author_name;
+    size_t author_name_len;
+    void free();
+    static Message create(const int *text, size_t text_len, const int *author_name, size_t author_name_len);
+};
+
+static Message chat_messages[MAX_MSG_COUNT];
+static size_t chat_message_count;
+static size_t chat_max_msg_line_len;
 
 void chat::init()
 {
-    state.max_msg_line_len =
+   chat_max_msg_line_len =
         floor((DEFAULT_WIDTH-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN) / common::state.glyph_width);
 }
 
@@ -33,17 +43,17 @@ void chat::render()
     float width, height;
     Vector2 pos = {
         .x = MSG_TEXT_MARGIN,
-        .y = (float)(DEFAULT_HEIGHT - ted::state.lines.len*FONT_SIZE)
+        .y = DEFAULT_HEIGHT - ted::get_height()
     };
 
-    for (int i = state.message_count-1; i >= 0; i--) {
-        height = state.messages[i].lines.len*FONT_SIZE;
+    for (int i =chat_message_count-1; i >= 0; i--) {
+        height = chat_messages[i].lines.len*FONT_SIZE;
         height += FONT_SIZE; // reserve place for 'username'
         height += 2*MSG_TEXT_PADDING;
 
         // calculate width
-        width = calc_max_line(state.messages[i].lines)*common::state.glyph_width;
-        size_t author_name_width = state.messages[i].author_name_len*common::state.glyph_width;
+        width = calc_max_line(chat_messages[i].lines)*common::state.glyph_width;
+        size_t author_name_width = chat_messages[i].author_name_len*common::state.glyph_width;
         if (width < author_name_width) width = author_name_width;
         width += 2*MSG_TEXT_PADDING;
 
@@ -58,20 +68,20 @@ void chat::render()
         // draw username
         DrawTextCodepoints(
                 common::state.font,
-                state.messages[i].author_name,
-                state.messages[i].author_name_len,
+                chat_messages[i].author_name,
+                chat_messages[i].author_name_len,
                 (Vector2){ pos.x+MSG_TEXT_PADDING, pos.y+MSG_TEXT_PADDING},
                 FONT_SIZE, 0, MSG_AUTHOR_NAME_COLOR);
 
         // draw message
         common::draw_lines(
                 (Vector2){ pos.x+MSG_TEXT_PADDING, pos.y+MSG_TEXT_PADDING+FONT_SIZE },
-                state.messages[i].lines,
+                chat_messages[i].lines,
                 MSG_FG_COLOR);
     }
 }
 
-chat::Message chat::Message::create(
+Message Message::create(
         const int *text, size_t text_len,
         const int *author_name, size_t author_name_len)
 {
@@ -82,7 +92,7 @@ chat::Message chat::Message::create(
     new_msg.lines.text = (int *) MemAlloc(text_size);
     new_msg.lines.text_len = text_len;
     memcpy(new_msg.lines.text, text, text_size);
-    new_msg.lines.recalc(state.max_msg_line_len);
+    new_msg.lines.recalc(chat_max_msg_line_len);
 
     // Copy author name
     size_t author_name_size = author_name_len * sizeof(int);
@@ -93,7 +103,7 @@ chat::Message chat::Message::create(
     return new_msg;
 }
 
-void chat::Message::free()
+void Message::free()
 {
     MemFree(this->lines.text);
     MemFree(this->author_name);
@@ -110,14 +120,14 @@ void chat::push_msg(
 {
     assert(msg_len > 0);
 
-    if (state.message_count >= MAX_MSG_COUNT) {
-        state.messages[0].free();
-        memmove(&state.messages[0],
-                &state.messages[1],
-                (state.message_count-1) * sizeof(Message));
-        state.message_count -= 1;
+    if (chat_message_count >= MAX_MSG_COUNT) {
+        chat_messages[0].free();
+        memmove(&chat_messages[0],
+                &chat_messages[1],
+                (chat_message_count-1) * sizeof(Message));
+        chat_message_count -= 1;
     }
 
-    state.messages[state.message_count++] =
+    chat_messages[chat_message_count++] =
         Message::create(msg, msg_len, author_name, author_name_len);
 }

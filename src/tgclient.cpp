@@ -4,7 +4,10 @@
 #include <cstdio>
 #include <map>
 
+#include <td/telegram/Client.h>
+
 #include "chat.h"
+#include "ted.h"
 #include "tgclient.h"
 
 #define UPDATE_HANDLERS \
@@ -20,7 +23,12 @@
 
 #define HANDLER_IMPL(type, param_name) static void type##_handler(td_api::object_ptr<td_api::type> param_name)
 
+#define TG_CLIENT_WAIT_TIME 0.0
+
+namespace td_api = td::td_api;
+
 typedef void (*Handler)(td_api::object_ptr<td_api::Object>);
+
 
 enum ReqAnswerHandlerId {
     IGNORE, // handler ids must start with 1
@@ -98,40 +106,38 @@ void tgclient::update()
     }
 }
 
-void tgclient::process_input(const int *input, size_t input_len)
+void tgclient::process_input()
 {
-    assert(input_len > 0);
-
-    std::wstring as_wstr((wchar_t *)input, input_len);
-    std::string as_str(as_wstr.begin(), as_wstr.end());
-
+    std::wstring text = ted::get_text();
+    std::string text_as_str(text.begin(), text.end());
     switch (state) {
         case NONE:
             break;
 
         case FREETIME:
-            if (input[0] == ':' && input[1] == 'l') {
+            if (text[0] == ':' && text[1] == 'l') {
                 manager.send(
                         client_id,
                         Object_handler_id,
                         td_api::make_object<td_api::logOut>());
             } else {
-                chat::push_msg(input, input_len, (int *)L"You", 3);
+                chat::push_msg((int *)text.c_str(), text.length(), (int*)L"You", 3);
             }
+            ted::clear();
             break;
 
         case WAIT_CODE:
             manager.send(
                     client_id,
                     Object_handler_id,
-                    td_api::make_object<td_api::checkAuthenticationCode>(as_str));
+                    td_api::make_object<td_api::checkAuthenticationCode>(text_as_str));
             break;
 
         case WAIT_PHONE_NUMBER:
             manager.send(
                     client_id,
                     Object_handler_id,
-                    td_api::make_object<td_api::setAuthenticationPhoneNumber>(as_str, nullptr));
+                    td_api::make_object<td_api::setAuthenticationPhoneNumber>(text_as_str, nullptr));
             break;
     }
 

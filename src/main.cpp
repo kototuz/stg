@@ -38,10 +38,8 @@ int main(int argc, char *argv[])
         else if (KEYMAP_DELETE_WORD)        ted::delete_word();
         else if (KEYMAP_DELETE_LINE)        ted::delete_line();
         else if (KEYMAP_DELETE)             ted::delete_symbols(1);
-        else if (KEYMAP_SEND_MESSAGE) {
-            tgclient::process_input(ted::state.lines.text, ted::state.lines.text_len);
-            ted::clear();
-        } else { // just insert char
+        else if (KEYMAP_SEND_MESSAGE)       tgclient::process_input();
+        else { // just insert char
             int symbol = GetCharPressed();
             if (symbol != 0) ted::insert_symbol(symbol);
         }
