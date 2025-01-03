@@ -1,7 +1,7 @@
 #ifndef TED_H
 #define TED_H
 
-#include <string>
+#include <string_view>
 
 namespace ted {
     enum Motion {
@@ -25,8 +25,8 @@ namespace ted {
     void delete_line();
     void set_placeholder(const wchar_t *text);
     void set_placeholder(const wchar_t *text, size_t len);
+    std::wstring_view get_text();
     float get_height();
-    std::wstring get_text();
 }
 
 #endif

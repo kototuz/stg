@@ -226,9 +226,9 @@ float ted::get_height()
     return ted_lines.len*FONT_SIZE;
 }
 
-std::wstring ted::get_text()
+std::wstring_view ted::get_text()
 {
-    return std::wstring(ted_buffer, ted_buffer_len);
+    return std::wstring_view(ted_buffer, ted_buffer_len);
 }
 
 void ted::set_placeholder(const wchar_t *text)

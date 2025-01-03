@@ -108,7 +108,7 @@ void tgclient::update()
 
 void tgclient::process_input()
 {
-    std::wstring text = ted::get_text();
+    std::wstring_view text = ted::get_text();
     if (text.length() == 0) return;
     std::string text_as_str(text.begin(), text.end());
     switch (state) {
@@ -122,7 +122,7 @@ void tgclient::process_input()
                         Object_handler_id,
                         td_api::make_object<td_api::logOut>());
             } else {
-                chat::push_msg(text.c_str(), text.length(), L"You", 3);
+                chat::push_msg(&text[0], text.length(), L"You", 3);
             }
             break;
 
