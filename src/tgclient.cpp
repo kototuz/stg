@@ -109,6 +109,7 @@ void tgclient::update()
 void tgclient::process_input()
 {
     std::wstring text = ted::get_text();
+    if (text.length() == 0) return;
     std::string text_as_str(text.begin(), text.end());
     switch (state) {
         case NONE:
