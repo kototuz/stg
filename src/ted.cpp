@@ -19,11 +19,12 @@ struct Pos {
 static common::Lines ted_lines;
 static Pos ted_cursor_pos;
 static size_t ted_max_line_len;
-static int ted_buffer[MAX_MSG_LEN];
+static wchar_t ted_buffer[MAX_MSG_LEN];
+static size_t  ted_buffer_len = 0;
 static wchar_t ted_placeholder[MAX_PLACEHOLDER_LEN];
 static size_t ted_placeholder_len;
 
-static void move_cursor_to_ptr(int *text_ptr)
+static void move_cursor_to_ptr(wchar_t *text_ptr)
 {
     Pos pos = { ted_cursor_pos.row > 0 ? ted_cursor_pos.row-1 : 0, 0 };
     common::Line line = ted_lines.items[pos.row];
@@ -44,7 +45,7 @@ static void move_cursor_to_ptr(int *text_ptr)
 
 void ted::init()
 {
-    ted_lines = common::Lines{ .text = ted_buffer };
+    ted_lines = common::Lines{};
     ted_lines.grow_one();
     ted_lines.items[0].text = ted_buffer;
     ted_lines.items[0].len = 0;
@@ -54,7 +55,7 @@ void ted::init()
 
 void ted::clear()
 {
-    ted_lines.text_len = 0;
+    ted_buffer_len = 0;
     ted_lines.len = 0;
     ted_cursor_pos = Pos{};
     ted_lines.grow_one();
@@ -67,7 +68,7 @@ void ted::render()
     DrawRectangle(0, pos.y, DEFAULT_WIDTH, DEFAULT_HEIGHT, TED_BG_COLOR);
 
     // Render placeholder or text if it exists
-    if (ted_lines.text_len == 0) {
+    if (ted_buffer_len == 0) {
         DrawTextCodepoints(
                 common::state.font,
                 (int*)ted_placeholder, ted_placeholder_len,
@@ -88,7 +89,7 @@ void ted::render()
 void ted::try_cursor_motion(Motion m)
 {
     Pos p = ted_cursor_pos;
-    int *curr_text_ptr, *ptr;
+    wchar_t *curr_text_ptr, *ptr;
     switch (m) {
         case MOTION_BACKWARD:
             if (p.col == 0) {
@@ -114,7 +115,7 @@ void ted::try_cursor_motion(Motion m)
 
         case MOTION_FORWARD_WORD:;
             curr_text_ptr = &ted_lines.items[p.row].text[p.col];
-            ptr = &ted_lines.text[ted_lines.text_len-1]; // set to the end text ptr
+            ptr = &ted_buffer[ted_buffer_len-1]; // set to the end text ptr
             while (curr_text_ptr != ptr && *curr_text_ptr == ' ') curr_text_ptr++;  // move to the word begin
             while (curr_text_ptr != ptr && *curr_text_ptr != ' ') curr_text_ptr++;  // move to the word end
             move_cursor_to_ptr(curr_text_ptr+1);
@@ -122,7 +123,7 @@ void ted::try_cursor_motion(Motion m)
 
         case MOTION_BACKWARD_WORD:;
             curr_text_ptr = &ted_lines.items[p.row].text[p.col];
-            ptr = ted_lines.text-1; // set to the begin text ptr
+            ptr = ted_buffer-1; // set to the begin text ptr
             if (curr_text_ptr[-1] == ' ') curr_text_ptr--;
             while (curr_text_ptr != ptr && *curr_text_ptr == ' ') curr_text_ptr--; // move to the word end
             while (curr_text_ptr != ptr && *curr_text_ptr != ' ') curr_text_ptr--; // move to the word begin
@@ -163,42 +164,42 @@ void ted::try_cursor_motion(Motion m)
 
 void ted::insert_symbol(int s)
 {
-    if (ted_lines.text_len+1 >= MAX_MSG_LEN) return;
+    if (ted_buffer_len+1 >= MAX_MSG_LEN) return;
 
     // move text after cursor
-    int *text_curr_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
-    int *text_end_ptr = &ted_lines.text[ted_lines.text_len];
+    wchar_t *text_curr_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
+    wchar_t *text_end_ptr = &ted_buffer[ted_buffer_len];
     size_t size = (text_end_ptr - text_curr_ptr) * sizeof(int);
     memmove(text_curr_ptr+1, text_curr_ptr, size);
 
     *text_curr_ptr = s;
-    ted_lines.text_len += 1;
+    ted_buffer_len += 1;
 
-    ted_lines.recalc(ted_max_line_len);
+    ted_lines.recalc(ted_buffer, ted_buffer_len, ted_max_line_len);
     move_cursor_to_ptr(text_curr_ptr+1);
 }
 
 void ted::delete_symbols(size_t count)
 {
-    if (ted_lines.text_len < count) return;
+    if (ted_buffer_len < count) return;
 
-    int *text_curr_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
-    int *text_end_ptr = &ted_lines.text[ted_lines.text_len];
+    wchar_t *text_curr_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
+    wchar_t *text_end_ptr = &ted_buffer[ted_buffer_len];
     size_t size = (text_end_ptr - text_curr_ptr) * sizeof(int);
 
-    int *new_curr_text_ptr = text_curr_ptr - count;
+    wchar_t *new_curr_text_ptr = text_curr_ptr - count;
     memmove(new_curr_text_ptr, text_curr_ptr, size);
-    ted_lines.text_len -= text_curr_ptr - new_curr_text_ptr;
+    ted_buffer_len -= text_curr_ptr - new_curr_text_ptr;
 
-    ted_lines.recalc(ted_max_line_len);
+    ted_lines.recalc(ted_buffer, ted_buffer_len, ted_max_line_len);
     move_cursor_to_ptr(new_curr_text_ptr);
 }
 
 void ted::delete_word()
 {
-    int *begin_text_ptr = ted_lines.text;
-    int *curr_text_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
-    int *new_curr_text_ptr = curr_text_ptr;
+    wchar_t *begin_text_ptr = ted_buffer;
+    wchar_t *curr_text_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
+    wchar_t *new_curr_text_ptr = curr_text_ptr;
     if (new_curr_text_ptr[-1] == ' ') new_curr_text_ptr--;
     while (new_curr_text_ptr != begin_text_ptr && *new_curr_text_ptr == ' ') new_curr_text_ptr--; // move to the word end
     while (new_curr_text_ptr != begin_text_ptr) {
@@ -215,8 +216,8 @@ void ted::delete_word()
 
 void ted::delete_line()
 {
-    int *curr_text_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
-    int *new_text_ptr = ted_lines.items[ted_cursor_pos.row].text;
+    wchar_t *curr_text_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
+    wchar_t *new_text_ptr = ted_lines.items[ted_cursor_pos.row].text;
     ted::delete_symbols(curr_text_ptr - new_text_ptr);
 }
 
@@ -227,7 +228,7 @@ float ted::get_height()
 
 std::wstring ted::get_text()
 {
-    return std::wstring((wchar_t *)ted_lines.text, ted_lines.text_len);
+    return std::wstring(ted_buffer, ted_buffer_len);
 }
 
 void ted::set_placeholder(const wchar_t *text)

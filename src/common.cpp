@@ -21,7 +21,7 @@ void common::draw_lines(Vector2 pos, common::Lines lines, Color color)
     for (size_t i = 0; i < lines.len; i++) {
         DrawTextCodepoints(
                 state.font,
-                lines.items[i].text,
+                (const int *)lines.items[i].text,
                 lines.items[i].len,
                 pos, FONT_SIZE, 0, color);
         pos.y += FONT_SIZE;
@@ -52,42 +52,42 @@ void common::Lines::grow_one()
     this->items = new_buf;
 }
 
-void common::Lines::recalc(size_t max_line)
+void common::Lines::recalc(wchar_t *text, size_t text_len, size_t max_line)
 {
     // clear all lines
     this->len = 0;
     memset(this->items, 0x0, this->cap*sizeof(common::Line));
     this->grow_one();
-    this->items[0].text = this->text;
+    this->items[0].text = text;
 
     size_t last_word_begin = 0;
     common::Line *curr_line = &this->items[0];
-    for (size_t i = 0; i < this->text_len; i++) {
+    for (size_t i = 0; i < text_len; i++) {
         if (curr_line->len+1 > max_line) {
-            if (this->text[i] == ' ') {
+            if (text[i] == ' ') {
                 do {
                     curr_line->trim_whitespace_count += 1;
-                    if (++i >= this->text_len) return;
-                } while (this->text[i] == ' ');
+                    if (++i >= text_len) return;
+                } while (text[i] == ' ');
                 this->grow_one();
                 curr_line = &this->items[this->len-1];
                 curr_line->len = 1;
-                curr_line->text = &this->text[i];
+                curr_line->text = &text[i];
             } else if (i - last_word_begin >= max_line) {
                 this->grow_one();
                 curr_line = &this->items[this->len-1];
                 curr_line->len = 1;
-                curr_line->text = &this->text[i];
+                curr_line->text = &text[i];
             } else {
                 curr_line->len -= i - last_word_begin + 1;
                 this->grow_one();
                 curr_line = &this->items[this->len-1];
-                curr_line->text = &this->text[last_word_begin];
+                curr_line->text = &text[last_word_begin];
                 curr_line->len = i - last_word_begin + 1;
             }
         } else {
             curr_line->len += 1;
-            if (this->text[i] == ' ') last_word_begin = i+1;
+            if (text[i] == ' ') last_word_begin = i+1;
         }
     }
 }

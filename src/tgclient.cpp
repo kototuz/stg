@@ -122,7 +122,7 @@ void tgclient::process_input()
                         Object_handler_id,
                         td_api::make_object<td_api::logOut>());
             } else {
-                chat::push_msg((int *)text.c_str(), text.length(), (int*)L"You", 3);
+                chat::push_msg(text.c_str(), text.length(), L"You", 3);
             }
             break;
 

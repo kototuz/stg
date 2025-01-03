@@ -54,4 +54,6 @@ int main(int argc, char *argv[])
     CloseWindow();
 }
 
-// TODO: Put away private info from headers
+// TODO: Add a way to select messages to operate on them
+// TODO: Introduce 'theirs' and 'ours' messages
+// TODO: Make window resizable

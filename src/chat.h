@@ -6,8 +6,7 @@
 namespace chat {
     void init();
     void render();
-    void push_err(const int *err_msg);
-    void push_msg(const int *msg, size_t msg_len, const int *author, size_t author_len);
+    void push_msg(const wchar_t *msg, size_t msg_len, const wchar_t *author, size_t author_len);
 }
 
 #endif

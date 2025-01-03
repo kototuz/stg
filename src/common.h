@@ -7,20 +7,18 @@
 
 namespace common {
 struct Line {
-    int *text;
+    wchar_t *text;
     size_t len;
     size_t trim_whitespace_count;
 };
 
 struct Lines {
-    int *text;
-    size_t text_len;
     Line *items;
     size_t len;
     size_t cap;
 
     void grow_one();
-    void recalc(size_t max_line);
+    void recalc(wchar_t *text, size_t text_len, size_t max_line);
 };
 
 struct State {

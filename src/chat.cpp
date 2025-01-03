@@ -10,11 +10,13 @@
 #include "config.h"
 
 struct Message {
-    common::Lines lines;
-    int *author_name;
+    wchar_t *text;
+    size_t text_len;
+    wchar_t *author_name;
     size_t author_name_len;
+    common::Lines lines;
     void free();
-    static Message create(const int *text, size_t text_len, const int *author_name, size_t author_name_len);
+    static Message create(const wchar_t *text, size_t text_len, const wchar_t *author_name, size_t author_name_len);
 };
 
 static Message chat_messages[MAX_MSG_COUNT];
@@ -68,7 +70,7 @@ void chat::render()
         // draw username
         DrawTextCodepoints(
                 common::state.font,
-                chat_messages[i].author_name,
+                (const int *)chat_messages[i].author_name,
                 chat_messages[i].author_name_len,
                 (Vector2){ pos.x+MSG_TEXT_PADDING, pos.y+MSG_TEXT_PADDING},
                 FONT_SIZE, 0, MSG_AUTHOR_NAME_COLOR);
@@ -82,21 +84,21 @@ void chat::render()
 }
 
 Message Message::create(
-        const int *text, size_t text_len,
-        const int *author_name, size_t author_name_len)
+        const wchar_t *text, size_t text_len,
+        const wchar_t *author_name, size_t author_name_len)
 {
     Message new_msg = {};
 
     // Copy text
     size_t text_size = text_len * sizeof(int);
-    new_msg.lines.text = (int *) MemAlloc(text_size);
-    new_msg.lines.text_len = text_len;
-    memcpy(new_msg.lines.text, text, text_size);
-    new_msg.lines.recalc(chat_max_msg_line_len);
+    new_msg.text = (wchar_t *) MemAlloc(text_size);
+    new_msg.text_len = text_len;
+    memcpy(new_msg.text, text, text_size);
+    new_msg.lines.recalc(new_msg.text, new_msg.text_len, chat_max_msg_line_len);
 
     // Copy author name
     size_t author_name_size = author_name_len * sizeof(int);
-    new_msg.author_name = (int *) MemAlloc(author_name_size);
+    new_msg.author_name = (wchar_t *) MemAlloc(author_name_size);
     new_msg.author_name_len = author_name_len;
     memcpy(new_msg.author_name, author_name, author_name_size);
 
@@ -105,18 +107,13 @@ Message Message::create(
 
 void Message::free()
 {
-    MemFree(this->lines.text);
+    MemFree(this->text);
     MemFree(this->author_name);
 }
 
-void chat::push_err(const int *err_msg)
-{
-    chat::push_msg(err_msg, wcslen((wchar_t *)err_msg), (int *)L"Error", 5);
-}
-
 void chat::push_msg(
-        const int *msg, size_t msg_len,
-        const int *author_name, size_t author_name_len)
+        const wchar_t *msg, size_t msg_len,
+        const wchar_t *author_name, size_t author_name_len)
 {
     assert(msg_len > 0);
 
