@@ -6,6 +6,7 @@
 
 #include <td/telegram/Client.h>
 
+#include "config.h"
 #include "chat.h"
 #include "ted.h"
 #include "tgclient.h"
@@ -21,14 +22,21 @@
 #define REQ_ANSWER_HANDLERS \
     H(Object) // when you don't need an answer
 
+#define COMMANDS \
+    C(l)  /*logout*/ \
+    C(c)  /*list chats*/ \
+    C(sc) /*select chat*/ \
+
 #define HANDLER_IMPL(type, param_name) static void type##_handler(td_api::object_ptr<td_api::type> param_name)
+
+#define CMD_IMPL(name) static void name##_cmd()
 
 #define TG_CLIENT_WAIT_TIME 0.0
 
 namespace td_api = td::td_api;
 
 typedef void (*Handler)(td_api::object_ptr<td_api::Object>);
-
+typedef void (*Command)();
 
 enum ReqAnswerHandlerId {
     IGNORE, // handler ids must start with 1
@@ -50,6 +58,11 @@ UPDATE_HANDLERS
 REQ_ANSWER_HANDLERS
 #undef H
 
+// Declare command functions
+#define C(name) static void name##_cmd();
+COMMANDS
+#undef C
+
 // Client
 static td::ClientManager manager;
 static std::int32_t client_id;
@@ -67,6 +80,11 @@ static Handler req_answer_handler_map[] = {
 #define H(type) (Handler) type##_handler
     REQ_ANSWER_HANDLERS
 #undef H
+};
+static std::map<std::wstring_view, Command> command_map = {
+#define C(name) { L""#name, name##_cmd },
+    COMMANDS
+#undef C
 };
 
 static void process_update(td_api::object_ptr<td_api::Object> obj)
@@ -116,11 +134,13 @@ void tgclient::process_input()
             break;
 
         case FREETIME:
-            if (text[0] == ':' && text[1] == 'l') {
-                manager.send(
-                        client_id,
-                        Object_handler_id,
-                        td_api::make_object<td_api::logOut>());
+            if (text[0] == COMMAND_START_SYMBOL) {
+                auto res = command_map.find(std::wstring_view(&text[1], text.length()-1));
+                if (res == command_map.end()) {
+                    ted::set_placeholder(L"Command not found");
+                    break;
+                }
+                res->second();
             } else {
                 chat::push_msg(&text[0], text.length(), L"You", 3);
             }
@@ -194,3 +214,7 @@ HANDLER_IMPL(authorizationStateWaitCode, auth_state)
     ted::set_placeholder(L"code");
     state = State::WAIT_CODE;
 }
+
+CMD_IMPL(l)  { puts("'l'  not yet implemented"); }
+CMD_IMPL(c)  { puts("'c'  not yet implemented"); }
+CMD_IMPL(sc) { puts("'sc' not yet implemented"); }
