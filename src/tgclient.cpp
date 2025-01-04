@@ -32,14 +32,19 @@
 
 #define HANDLER_IMPL(type, param_name) static void type##_handler(td_api::object_ptr<td_api::type> param_name)
 
-#define CMD_IMPL(name) static void name##_cmd()
+#define CMD_IMPL(name, param) static void name##_cmd(Args param)
 
 #define TG_CLIENT_WAIT_TIME 0.0
 
 namespace td_api = td::td_api;
 
+struct Args {
+    std::wstring_view *items;
+    size_t count;
+};
+
 typedef void (*Handler)(td_api::object_ptr<td_api::Object>);
-typedef void (*Command)();
+typedef void (*Command)(Args);
 
 enum ReqAnswerHandlerId {
     IGNORE, // handler ids must start with 1
@@ -62,7 +67,7 @@ REQ_ANSWER_HANDLERS
 #undef H
 
 // Declare command functions
-#define C(name) static void name##_cmd();
+#define C(name) static void name##_cmd(Args);
 COMMANDS
 #undef C
 
@@ -128,23 +133,44 @@ void tgclient::update()
     }
 }
 
+static std::vector<std::wstring_view> split(std::wstring_view src)
+{
+    size_t len = 0;
+    std::vector<std::wstring_view> res;
+    for (;;) {
+        if (src.length() == 0) break;
+        if (len == src.length()) { res.push_back(src); break; }
+        if (src[len] != ' ') { len++; continue; }
+        res.push_back(std::wstring_view(&src[0], len));
+        src.remove_prefix(len);
+        src.remove_prefix(std::min(src.find_first_not_of(L" "), src.size()));
+        len = 0;
+    }
+
+    return res;
+}
+
 void tgclient::process_input()
 {
     std::wstring_view text = ted::get_text();
     if (text.length() == 0) return;
     std::string text_as_str(text.begin(), text.end());
+
+    std::vector<std::wstring_view> args;
     switch (state) {
         case NONE:
             break;
 
         case FREETIME:
             if (text[0] == COMMAND_START_SYMBOL) {
-                auto res = command_map.find(std::wstring_view(&text[1], text.length()-1));
+                args = split(text);
+                args[0].remove_prefix(1); // without 'COMMAND_START_SYMBOL'
+                auto res = command_map.find(args[0]);
                 if (res == command_map.end()) {
                     ted::set_placeholder(L"Command not found");
                     break;
                 }
-                res->second();
+                res->second(Args{ .items = &args[1], .count = args.size()-1 });
             } else {
                 chat::push_msg(&text[0], text.length(), L"You", 3, MY_COLOR);
             }
@@ -242,14 +268,14 @@ HANDLER_IMPL(chats, c)
     chat::push_msg(msg.c_str(), msg.length(), L"System", 6, YELLOW);
 }
 
-CMD_IMPL(c)
+CMD_IMPL(c, args)
 {
     manager.send(client_id, chats_handler_id, td_api::make_object<td_api::getChats>(nullptr, 10));
 }
 
-CMD_IMPL(l)
+CMD_IMPL(l, args)
 {
     manager.send(client_id, Object_handler_id, td_api::make_object<td_api::logOut>());
 }
 
-CMD_IMPL(sc) { puts("'sc' not yet implemented"); }
+CMD_IMPL(sc, args) { puts("'sc' not yet implemented"); }
