@@ -78,7 +78,7 @@ void chat::render()
                 (const int *)chat_messages[i].author_name,
                 chat_messages[i].author_name_len,
                 (Vector2){ pos.x+MSG_TEXT_PADDING, pos.y+MSG_TEXT_PADDING},
-                FONT_SIZE, 0, MSG_AUTHOR_NAME_COLOR);
+                FONT_SIZE, 0, chat_messages[i].author_name_color);
 
         // draw message
         common::draw_lines(
