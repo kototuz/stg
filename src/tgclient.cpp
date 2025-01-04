@@ -20,6 +20,7 @@
     H(authorizationStateWaitPhoneNumber) \
     H(authorizationStateWaitCode) \
     H(updateNewChat) \
+    H(updateNewMessage) \
 
 #define REQ_ANSWER_HANDLERS \
     H(Object) /*when you don't need an answer*/ \
@@ -78,6 +79,7 @@ static State state;
 static const char *global_api_id;
 static const char *global_api_hash;
 static std::map<std::int64_t, std::string> chat_title_map;
+static std::int64_t curr_chat_id = 0;
 
 static std::map<std::int64_t, Handler> update_handler_map = {
 #define H(type) { td_api::type::ID, (Handler) type##_handler },
@@ -152,9 +154,10 @@ static std::vector<std::wstring_view> split(std::wstring_view src)
 
 void tgclient::process_input()
 {
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     std::wstring_view text = ted::get_text();
     if (text.length() == 0) return;
-    std::string text_as_str(text.begin(), text.end());
+    std::string text_as_str = converter.to_bytes(std::wstring(text));
 
     std::vector<std::wstring_view> args;
     switch (state) {
@@ -171,8 +174,16 @@ void tgclient::process_input()
                     break;
                 }
                 res->second(Args{ .items = &args[1], .count = args.size()-1 });
+            } else if (curr_chat_id == 0) {
+                ted::set_placeholder(L"Chat is not selected");
             } else {
-                chat::push_msg(&text[0], text.length(), L"You", 3, MY_COLOR);
+                auto send_message = td_api::make_object<td_api::sendMessage>();
+                send_message->chat_id_ = curr_chat_id;
+                auto message_content = td_api::make_object<td_api::inputMessageText>();
+                message_content->text_ = td_api::make_object<td_api::formattedText>();
+                message_content->text_->text_ = std::move(text_as_str);
+                send_message->input_message_content_ = std::move(message_content);
+                manager.send(client_id, Object_handler_id, std::move(send_message));
             }
             break;
 
@@ -268,6 +279,20 @@ HANDLER_IMPL(chats, c)
     chat::push_msg(msg.c_str(), msg.length(), L"System", 6, YELLOW);
 }
 
+HANDLER_IMPL(updateNewMessage, update_new_msg)
+{
+    if (update_new_msg->message_->chat_id_ != curr_chat_id) return;
+
+    std::string text;
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    if (update_new_msg->message_->content_->get_id() == td_api::messageText::ID) {
+        text = static_cast<td_api::messageText &>(*update_new_msg->message_->content_).text_->text_;
+    }
+
+    std::wstring wstr = converter.from_bytes(text);
+    chat::push_msg(wstr.c_str(), wstr.length(), L"Msg", 3, RED);
+}
+
 CMD_IMPL(c, args)
 {
     manager.send(client_id, chats_handler_id, td_api::make_object<td_api::getChats>(nullptr, 10));
@@ -278,4 +303,22 @@ CMD_IMPL(l, args)
     manager.send(client_id, Object_handler_id, td_api::make_object<td_api::logOut>());
 }
 
-CMD_IMPL(sc, args) { puts("'sc' not yet implemented"); }
+static std::int64_t to_int64_t(std::wstring_view text)
+{
+    size_t i = 0;
+    std::int64_t res = 0;
+    std::int64_t factor = 1;
+    if (text[0] == '-') { factor = -1; i = 1; }
+
+    for (; i < text.length(); i++) {
+        assert(isdigit(text[i]));
+        res = 10*res + (text[i] - '0');
+    }
+
+    return res * factor;
+}
+
+CMD_IMPL(sc, args)
+{
+    curr_chat_id = to_int64_t(args.items[0]);
+}
