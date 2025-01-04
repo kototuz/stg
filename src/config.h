@@ -42,7 +42,8 @@
 #   define KEYMAP_MOVE_BEGIN         (IsKeyDown(KEY_LEFT_CONTROL) && KEY(A))
 #   define KEYMAP_DELETE_WORD        (IsKeyDown(KEY_LEFT_CONTROL) && KEY(W))
 #   define KEYMAP_DELETE_LINE        (IsKeyDown(KEY_LEFT_CONTROL) && KEY(U))
-#   define KEYMAP_SEND_MESSAGE       (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_J))
+#   define KEYMAP_SEND_MESSAGE       (IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_J))
+#   define KEYMAP_NEW_LINE           (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_J))
 #else
 #   define KEYMAP_MOVE_FORWARD       (KEY(RIGHT))
 #   define KEYMAP_MOVE_BACKWARD      (KEY(LEFT))
@@ -55,7 +56,8 @@
 #   define KEYMAP_MOVE_BEGIN         (KEY(END))
 #   define KEYMAP_DELETE_WORD        (IsKeyDown(KEY_LEFT_CONTROL) && KEY(BACKSPACE))
 #   define KEYMAP_DELETE_LINE        (false)
-#   define KEYMAP_SEND_MESSAGE       (IsKeyPressed(KEY_ENTER))
+#   define KEYMAP_SEND_MESSAGE       (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_ENTER))
+#   define KEYMAP_NEW_LINE           (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_ENTER))
 #endif
 
 #endif

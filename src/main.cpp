@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
         else if (KEYMAP_DELETE_LINE)        ted::delete_line();
         else if (KEYMAP_DELETE)             ted::delete_symbols(1);
         else if (KEYMAP_SEND_MESSAGE)       tgclient::process_input();
+        else if (KEYMAP_NEW_LINE)           ted::insert_symbol('\n');
         else { // just insert char
             int symbol = GetCharPressed();
             if (symbol != 0) ted::insert_symbol(symbol);

@@ -63,7 +63,12 @@ void common::Lines::recalc(wchar_t *text, size_t text_len, size_t max_line)
     size_t last_word_begin = 0;
     common::Line *curr_line = &this->items[0];
     for (size_t i = 0; i < text_len; i++) {
-        if (curr_line->len+1 > max_line) {
+        if (text[i] == '\n') {
+            this->grow_one();
+            curr_line = &this->items[this->len-1];
+            curr_line->len = 0;
+            curr_line->text = &text[i+1];
+        } else if (curr_line->len+1 > max_line) {
             if (text[i] == ' ') {
                 do {
                     curr_line->trim_whitespace_count += 1;
