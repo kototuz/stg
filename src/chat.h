@@ -3,7 +3,7 @@
 
 #include <raylib.h>
 
-#define MAX_MSG_COUNT 3
+#define MAX_MSG_COUNT 128
 
 namespace chat {
     void init();

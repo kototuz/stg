@@ -28,8 +28,6 @@ static size_t chat_max_msg_line_len;
 
 void chat::init()
 {
-   chat_max_msg_line_len =
-        floor((DEFAULT_WIDTH-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN) / common::state.glyph_width);
 }
 
 static size_t calc_max_line(common::Lines lines)
@@ -45,10 +43,14 @@ static size_t calc_max_line(common::Lines lines)
 
 void chat::render()
 {
+    // Calculate max line
+    chat_max_msg_line_len =
+        floor((GetScreenWidth()-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN) / common::state.glyph_width);
+
     float width, height;
     Vector2 pos = {
         .x = MSG_TEXT_MARGIN,
-        .y = DEFAULT_HEIGHT - ted::get_height()
+        .y = GetScreenHeight() - ted::get_height()
     };
 
     for (int i =chat_message_count-1; i >= 0; i--) {

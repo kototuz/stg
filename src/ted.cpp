@@ -50,7 +50,6 @@ void ted::init()
     ted_lines.items[0].text = ted_buffer;
     ted_lines.items[0].len = 0;
     ted_cursor_pos = Pos{};
-    ted_max_line_len = floor(DEFAULT_WIDTH/common::state.glyph_width);
 }
 
 void ted::clear()
@@ -63,9 +62,15 @@ void ted::clear()
 
 void ted::render()
 {
+    float width = GetScreenWidth();
+    float height = GetScreenHeight();
+
+    // Calculate max line
+    ted_max_line_len = floor(width/common::state.glyph_width);
+
     // Render text editor background
-    Vector2 pos = { .y = ((float)(DEFAULT_HEIGHT - ted_lines.len*FONT_SIZE)) };
-    DrawRectangle(0, pos.y, DEFAULT_WIDTH, DEFAULT_HEIGHT, TED_BG_COLOR);
+    Vector2 pos = { .y = ((float)(height - ted_lines.len*FONT_SIZE)) };
+    DrawRectangle(0, pos.y, width, height, TED_BG_COLOR);
 
     // Render placeholder or text if it exists
     if (ted_buffer_len == 0) {

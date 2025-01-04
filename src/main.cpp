@@ -18,7 +18,8 @@ int main(int argc, char *argv[])
     // Disable 'raylib' logging
     SetTraceLogLevel(LOG_NONE);
 
-    InitWindow(800, 600, "Simple Telegram");
+    SetConfigFlags(FLAG_WINDOW_RESIZABLE);
+    InitWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT, "Simple Telegram");
 
     common::init();
     ted::init();
@@ -58,4 +59,3 @@ int main(int argc, char *argv[])
 // TODO: Animations
 // TODO: Add a way to select messages to operate on them
 // TODO: Introduce 'theirs' and 'ours' messages
-// TODO: Make window resizable

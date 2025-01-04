@@ -73,13 +73,13 @@ COMMANDS
 #undef C
 
 // Client
-static td::ClientManager manager;
-static std::int32_t client_id;
-static State state;
-static const char *global_api_id;
-static const char *global_api_hash;
+static td::ClientManager                   manager;
+static std::int32_t                        client_id;
+static State                               state;
+static const char                          *global_api_id;
+static const char                          *global_api_hash;
 static std::map<std::int64_t, std::string> chat_title_map;
-static std::int64_t curr_chat_id = 0;
+static std::int64_t                        curr_chat_id = 0;
 
 static std::map<std::int64_t, Handler> update_handler_map = {
 #define H(type) { td_api::type::ID, (Handler) type##_handler },
@@ -283,7 +283,7 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
 {
     if (update_new_msg->message_->chat_id_ != curr_chat_id) return;
 
-    std::string text;
+    std::string text = "[NONE]";
     std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     if (update_new_msg->message_->content_->get_id() == td_api::messageText::ID) {
         text = static_cast<td_api::messageText &>(*update_new_msg->message_->content_).text_->text_;
