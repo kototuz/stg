@@ -14,9 +14,12 @@ struct Message {
     size_t text_len;
     wchar_t *author_name;
     size_t author_name_len;
+    Color author_name_color;
     common::Lines lines;
     void free();
-    static Message create(const wchar_t *text, size_t text_len, const wchar_t *author_name, size_t author_name_len);
+    static Message create(
+            const wchar_t *text, size_t text_len,
+            const wchar_t *author_name, size_t author_name_len, Color author_name_color);
 };
 
 static Message chat_messages[MAX_MSG_COUNT];
@@ -85,7 +88,7 @@ void chat::render()
 
 Message Message::create(
         const wchar_t *text, size_t text_len,
-        const wchar_t *author_name, size_t author_name_len)
+        const wchar_t *author_name, size_t author_name_len, Color author_name_color)
 {
     Message new_msg = {};
 
@@ -102,6 +105,8 @@ Message Message::create(
     new_msg.author_name_len = author_name_len;
     memcpy(new_msg.author_name, author_name, author_name_size);
 
+    new_msg.author_name_color = author_name_color;
+
     return new_msg;
 }
 
@@ -113,7 +118,7 @@ void Message::free()
 
 void chat::push_msg(
         const wchar_t *msg, size_t msg_len,
-        const wchar_t *author_name, size_t author_name_len)
+        const wchar_t *author_name, size_t author_name_len, Color author_name_color)
 {
     assert(msg_len > 0);
 
@@ -126,5 +131,5 @@ void chat::push_msg(
     }
 
     chat_messages[chat_message_count++] =
-        Message::create(msg, msg_len, author_name, author_name_len);
+        Message::create(msg, msg_len, author_name, author_name_len, author_name_color);
 }

@@ -24,6 +24,9 @@
 #define TED_CURSOR_COLOR      WHITE
 #define TED_PLACEHOLDER_COLOR Color{0x40, 0x40, 0x40, 0xff}
 
+#define MY_COLOR    GREEN
+#define THEIR_COLOR RED
+
 #define COMMAND_START_SYMBOL ':'
 
 #define EMACS_KEYMAP

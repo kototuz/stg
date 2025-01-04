@@ -142,7 +142,7 @@ void tgclient::process_input()
                 }
                 res->second();
             } else {
-                chat::push_msg(&text[0], text.length(), L"You", 3);
+                chat::push_msg(&text[0], text.length(), L"You", 3, MY_COLOR);
             }
             break;
 
