@@ -3,6 +3,8 @@
 #include <string>
 #include <cstdio>
 #include <map>
+#include <codecvt>
+#include <locale>
 
 #include <td/telegram/Client.h>
 
@@ -17,10 +19,11 @@
     H(authorizationStateReady) \
     H(authorizationStateWaitPhoneNumber) \
     H(authorizationStateWaitCode) \
-    /*H(updateNewChat)*/
+    H(updateNewChat) \
 
 #define REQ_ANSWER_HANDLERS \
-    H(Object) // when you don't need an answer
+    H(Object) /*when you don't need an answer*/ \
+    H(chats)
 
 #define COMMANDS \
     C(l)  /*logout*/ \
@@ -69,6 +72,7 @@ static std::int32_t client_id;
 static State state;
 static const char *global_api_id;
 static const char *global_api_hash;
+static std::map<std::int64_t, std::string> chat_title_map;
 
 static std::map<std::int64_t, Handler> update_handler_map = {
 #define H(type) { td_api::type::ID, (Handler) type##_handler },
@@ -77,7 +81,7 @@ static std::map<std::int64_t, Handler> update_handler_map = {
 };
 static Handler req_answer_handler_map[] = {
     (Handler) nullptr, // handler ids starts with 1 => skip first
-#define H(type) (Handler) type##_handler
+#define H(type) (Handler) type##_handler,
     REQ_ANSWER_HANDLERS
 #undef H
 };
@@ -215,6 +219,37 @@ HANDLER_IMPL(authorizationStateWaitCode, auth_state)
     state = State::WAIT_CODE;
 }
 
-CMD_IMPL(l)  { puts("'l'  not yet implemented"); }
-CMD_IMPL(c)  { puts("'c'  not yet implemented"); }
+HANDLER_IMPL(updateNewChat, update_new_chat)
+{
+    chat_title_map.insert({update_new_chat->chat_->id_, update_new_chat->chat_->title_});
+}
+
+HANDLER_IMPL(chats, c)
+{
+    std::wstring msg;
+    std::wstring wname;
+    std::string name;
+    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+    for (auto chat_id : c->chat_ids_) {
+        name = chat_title_map[chat_id];
+        wname = converter.from_bytes(name);
+        msg.append(wname);
+        msg.push_back(' ');
+        msg.append(std::to_wstring(chat_id));
+        msg.push_back('\n');
+    }
+
+    chat::push_msg(msg.c_str(), msg.length(), L"System", 6, YELLOW);
+}
+
+CMD_IMPL(c)
+{
+    manager.send(client_id, chats_handler_id, td_api::make_object<td_api::getChats>(nullptr, 10));
+}
+
+CMD_IMPL(l)
+{
+    manager.send(client_id, Object_handler_id, td_api::make_object<td_api::logOut>());
+}
+
 CMD_IMPL(sc) { puts("'sc' not yet implemented"); }
