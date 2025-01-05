@@ -4,7 +4,7 @@
 #define DEFAULT_WIDTH  800
 #define DEFAULT_HEIGHT 600
 
-#define FONT_PATH        "resources/Iosevka-Regular.ttf"
+#define FONT_PATH        "resources/JetBrainsMono-Regular.ttf"
 #define FONT_SIZE        48.0f
 #define FONT_GLYPH_COUNT 9608
 
