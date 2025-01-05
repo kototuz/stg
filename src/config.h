@@ -16,7 +16,9 @@
 #define MSG_REC_SEGMENT_COUNT 20
 #define MSG_TEXT_MARGIN       10.0f
 #define MSG_TEXT_PADDING      15.0f
-#define MSG_AUTHOR_NAME_COLOR GREEN
+
+#define MY_MSG_COLOR          GREEN
+#define NOT_MY_MSG_COLOR      RED
 
 #define TED_BG_COLOR          MSG_BG_COLOR
 #define TED_FG_COLOR          WHITE

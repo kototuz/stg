@@ -58,4 +58,3 @@ int main(int argc, char *argv[])
 
 // TODO: Animations
 // TODO: Add a way to select messages to operate on them
-// TODO: Introduce 'theirs' and 'ours' messages

@@ -83,7 +83,7 @@ static const char                                       *global_api_hash;
 static std::map<std::int64_t, std::wstring>             chat_title_map;
 static std::int64_t                                     curr_chat_id = 0;
 static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-static std::wstring                                     username;
+static std::int64_t                                     user_id;
 static std::map<std::int64_t, std::wstring>             user_map;
 
 static std::map<std::int64_t, Handler> update_handler_map = {
@@ -277,7 +277,7 @@ HANDLER_IMPL(chats, c)
         msg.push_back('\n');
     }
 
-    chat::push_msg(msg.c_str(), msg.length(), L"System", 6, YELLOW);
+    chat::push_msg(msg, L"System");
 }
 
 static std::wstring_view get_username(std::int64_t user_id)
@@ -306,20 +306,26 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
     }
 
     std::wstring_view sender_name;
+    std::wstring wstr = converter.from_bytes(text);
     if (update_new_msg->message_->sender_id_->get_id() == td_api::messageSenderUser::ID) {
-        sender_name = get_username(static_cast<td_api::messageSenderUser &>(*update_new_msg->message_->sender_id_).user_id_);
+        auto id = static_cast<td_api::messageSenderUser &>(*update_new_msg->message_->sender_id_).user_id_;
+        sender_name = get_username(id);
+
+        // If it is our message we push it as our message :)
+        if (user_id == id) {
+            chat::push_msg(wstr, sender_name, true);
+            return;
+        }
     } else {
         sender_name = get_chat_title(static_cast<td_api::messageSenderChat &>(*update_new_msg->message_->sender_id_).chat_id_);
     }
 
-    std::wstring wstr = converter.from_bytes(text);
-    chat::push_msg(wstr.c_str(), wstr.length(), &sender_name[0], sender_name.length(), RED);
+    chat::push_msg(wstr, sender_name);
 }
 
 HANDLER_IMPL(user, me)
 {
-    username = converter.from_bytes(me->first_name_);
-    ted::set_placeholder(username.c_str());
+    user_id = me->id_;
     state = State::FREETIME;
 }
 

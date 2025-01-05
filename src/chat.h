@@ -1,6 +1,8 @@
 #ifndef CHAT_H
 #define CHAT_H
 
+#include <string_view>
+
 #include <raylib.h>
 
 #define MAX_MSG_COUNT 128
@@ -8,7 +10,7 @@
 namespace chat {
     void init();
     void render();
-    void push_msg(const wchar_t *msg, size_t msg_len, const wchar_t *author, size_t author_len, Color author_color);
+    void push_msg(std::wstring_view text, std::wstring_view author_name, bool is_mine = false);
 }
 
 #endif
