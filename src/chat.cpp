@@ -64,7 +64,7 @@ void chat::render()
         if (msg_block_width < author_name_width) msg_block_width = author_name_width;
         msg_block_width += 2*MSG_TEXT_PADDING;
 
-        msg_pos.y -= MSG_TEXT_MARGIN + msg_block_height;
+        msg_pos.y -= MSG_DISTANCE + msg_block_height;
 
         // If it is an our message we align it to the right and change the author name color
         if (chat_messages[i].is_mine) {

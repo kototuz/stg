@@ -12,9 +12,9 @@
 
 #define MSG_BG_COLOR          (Color){0x21,0x21,0x21,0xff}
 #define MSG_FG_COLOR          WHITE
-#define MSG_REC_ROUNDNESS     20
-#define MSG_REC_SEGMENT_COUNT 20
-#define MSG_TEXT_MARGIN       10.0f
+#define MSG_REC_ROUNDNESS     40
+#define MSG_REC_SEGMENT_COUNT 40
+#define MSG_TEXT_MARGIN       20.0f
 #define MSG_TEXT_PADDING      15.0f
 
 #define MY_MSG_COLOR          GREEN
@@ -25,6 +25,10 @@
 #define TED_CURSOR_CODE       L'▏'
 #define TED_CURSOR_COLOR      WHITE
 #define TED_PLACEHOLDER_COLOR Color{0x40, 0x40, 0x40, 0xff}
+#define TED_PADDING           15.0f
+#define TED_MARGIN            20.0f
+#define TED_REC_ROUNDNESS     40
+#define TED_REC_SEGMENT_COUNT 40
 
 #define MY_COLOR    GREEN
 #define THEIR_COLOR RED

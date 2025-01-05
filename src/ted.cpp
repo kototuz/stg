@@ -40,6 +40,7 @@ static void move_cursor_to_ptr(wchar_t *text_ptr)
         }
     }
 
+    if (pos.col > ted_max_line_len) pos.col = ted_max_line_len;
     ted_cursor_pos = pos;
 }
 
@@ -66,13 +67,18 @@ void ted::render()
     float height = GetScreenHeight();
 
     // Calculate max line
-    ted_max_line_len = floor(width/common::state.glyph_width);
+    ted_max_line_len = floor((width - 2*TED_MARGIN - 2*TED_PADDING)/common::state.glyph_width);
 
-    // Render text editor background
-    Vector2 pos = { .y = ((float)(height - ted_lines.len*FONT_SIZE)) };
-    DrawRectangle(0, pos.y, width, height, TED_BG_COLOR);
+    // Render text editor rectangle
+    Rectangle ted_rec = {};
+    ted_rec.width = width - 2*TED_MARGIN;
+    ted_rec.height = ted_lines.len*FONT_SIZE + 2*TED_PADDING;
+    ted_rec.x = TED_MARGIN;
+    ted_rec.y = height - ted_rec.height - TED_MARGIN;
+    DrawRectangleRounded(ted_rec, TED_REC_ROUNDNESS/ted_rec.height, TED_REC_SEGMENT_COUNT, TED_BG_COLOR);
 
     // Render placeholder or text if it exists
+    Vector2 pos = { ted_rec.x + TED_PADDING, ted_rec.y + TED_PADDING };
     if (ted_buffer_len == 0) {
         DrawTextCodepoints(
                 common::state.font,
@@ -84,7 +90,7 @@ void ted::render()
     }
 
     // Render cursor
-    pos.x = ted_cursor_pos.col*common::state.glyph_width + 1;
+    pos.x = TED_MARGIN + TED_PADDING + ted_cursor_pos.col*common::state.glyph_width + 1;
     pos.y = pos.y + ted_cursor_pos.row*FONT_SIZE;
     DrawTextCodepoint(
             common::state.font, TED_CURSOR_CODE,
@@ -229,7 +235,7 @@ void ted::delete_line()
 
 float ted::get_height()
 {
-    return ted_lines.len*FONT_SIZE;
+    return ted_lines.len*FONT_SIZE + TED_MARGIN + 2*TED_PADDING;
 }
 
 std::wstring_view ted::get_text()
