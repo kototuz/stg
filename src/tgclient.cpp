@@ -72,14 +72,15 @@ REQ_ANSWER_HANDLERS
 COMMANDS
 #undef C
 
-// Client
-static td::ClientManager                   manager;
-static std::int32_t                        client_id;
-static State                               state;
-static const char                          *global_api_id;
-static const char                          *global_api_hash;
-static std::map<std::int64_t, std::string> chat_title_map;
-static std::int64_t                        curr_chat_id = 0;
+// Global state
+static td::ClientManager                                manager;
+static std::int32_t                                     client_id;
+static State                                            state;
+static const char                                       *global_api_id;
+static const char                                       *global_api_hash;
+static std::map<std::int64_t, std::string>              chat_title_map;
+static std::int64_t                                     curr_chat_id = 0;
+static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 
 static std::map<std::int64_t, Handler> update_handler_map = {
 #define H(type) { td_api::type::ID, (Handler) type##_handler },
@@ -154,10 +155,9 @@ static std::vector<std::wstring_view> split(std::wstring_view src)
 
 void tgclient::process_input()
 {
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     std::wstring_view text = ted::get_text();
     if (text.length() == 0) return;
-    std::string text_as_str = converter.to_bytes(std::wstring(text));
+    std::string text_as_str = converter.to_bytes(text.begin(), text.end());
 
     std::vector<std::wstring_view> args;
     switch (state) {
@@ -266,7 +266,6 @@ HANDLER_IMPL(chats, c)
     std::wstring msg;
     std::wstring wname;
     std::string name;
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     for (auto chat_id : c->chat_ids_) {
         name = chat_title_map[chat_id];
         wname = converter.from_bytes(name);
@@ -284,7 +283,6 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
     if (update_new_msg->message_->chat_id_ != curr_chat_id) return;
 
     std::string text = "[NONE]";
-    std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
     if (update_new_msg->message_->content_->get_id() == td_api::messageText::ID) {
         text = static_cast<td_api::messageText &>(*update_new_msg->message_->content_).text_->text_;
     }
