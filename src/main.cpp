@@ -56,5 +56,7 @@ int main(int argc, char *argv[])
     CloseWindow();
 }
 
+// TODO: Panel that shows the current chat info: title, online (maybe)
+// TODO: Panel where you can select chat
 // TODO: Animations
 // TODO: Add a way to select messages to operate on them
