@@ -10,15 +10,15 @@
 
 #define CHAT_BG_COLOR (Color){0x0f,0x0f,0x0f,0xff}
 
-#define MSG_BG_COLOR          (Color){0x21,0x21,0x21,0xff}
-#define MSG_FG_COLOR          WHITE
-#define MSG_REC_ROUNDNESS     40
-#define MSG_REC_SEGMENT_COUNT 40
-#define MSG_TEXT_MARGIN       20.0f
-#define MSG_TEXT_PADDING      15.0f
-
-#define MY_MSG_COLOR          GREEN
-#define NOT_MY_MSG_COLOR      RED
+#define MSG_BG_COLOR               (Color){0x21,0x21,0x21,0xff}
+#define MSG_FG_COLOR               WHITE
+#define MSG_REC_ROUNDNESS          40
+#define MSG_REC_SEGMENT_COUNT      40
+#define MSG_TEXT_MARGIN_LEFT_RIGHT 20.0f
+#define MSG_TEXT_PADDING           15.0f
+#define MSG_DISTANCE               10.0f
+#define MY_MSG_COLOR               GREEN
+#define NOT_MY_MSG_COLOR           RED
 
 #define TED_BG_COLOR          MSG_BG_COLOR
 #define TED_FG_COLOR          WHITE

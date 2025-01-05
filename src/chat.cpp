@@ -48,7 +48,7 @@ void chat::render()
 
     // Calculate max line
     chat_max_msg_line_len =
-        floor((width-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN) / common::state.glyph_width);
+        floor((width-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN_LEFT_RIGHT) / common::state.glyph_width);
 
     Color author_name_color;
     float msg_block_width, msg_block_height;
@@ -69,10 +69,10 @@ void chat::render()
         // If it is an our message we align it to the right and change the author name color
         if (chat_messages[i].is_mine) {
             author_name_color = MY_MSG_COLOR;
-            msg_pos.x = width - msg_block_width - MSG_TEXT_MARGIN;
+            msg_pos.x = width - msg_block_width - MSG_TEXT_MARGIN_LEFT_RIGHT;
         } else {
             author_name_color = NOT_MY_MSG_COLOR;
-            msg_pos.x = MSG_TEXT_MARGIN;
+            msg_pos.x = MSG_TEXT_MARGIN_LEFT_RIGHT;
         }
 
         // draw message background
