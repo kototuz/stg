@@ -21,10 +21,12 @@
     H(authorizationStateWaitCode) \
     H(updateNewChat) \
     H(updateNewMessage) \
+    H(updateUser) \
 
 #define REQ_ANSWER_HANDLERS \
     H(Object) /*when you don't need an answer*/ \
-    H(chats)
+    H(chats) \
+    H(user)
 
 #define COMMANDS \
     C(l)  /*logout*/ \
@@ -78,9 +80,11 @@ static std::int32_t                                     client_id;
 static State                                            state;
 static const char                                       *global_api_id;
 static const char                                       *global_api_hash;
-static std::map<std::int64_t, std::string>              chat_title_map;
+static std::map<std::int64_t, std::wstring>             chat_title_map;
 static std::int64_t                                     curr_chat_id = 0;
 static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
+static std::wstring                                     username;
+static std::map<std::int64_t, std::wstring>             user_map;
 
 static std::map<std::int64_t, Handler> update_handler_map = {
 #define H(type) { td_api::type::ID, (Handler) type##_handler },
@@ -232,7 +236,9 @@ HANDLER_IMPL(authorizationStateWaitTdlibParameters, wait_params)
 HANDLER_IMPL(authorizationStateReady, update)
 {
     ted::set_placeholder(L"authorized");
-    state = State::FREETIME;
+
+    // Get user name
+    manager.send(client_id, user_handler_id, td_api::make_object<td_api::getMe>());
 }
 
 HANDLER_IMPL(authorizationStateWaitPhoneNumber, auth_state)
@@ -258,24 +264,36 @@ HANDLER_IMPL(authorizationStateWaitCode, auth_state)
 
 HANDLER_IMPL(updateNewChat, update_new_chat)
 {
-    chat_title_map.insert({update_new_chat->chat_->id_, update_new_chat->chat_->title_});
+    chat_title_map.insert({update_new_chat->chat_->id_, converter.from_bytes(update_new_chat->chat_->title_)});
 }
 
 HANDLER_IMPL(chats, c)
 {
     std::wstring msg;
-    std::wstring wname;
-    std::string name;
     for (auto chat_id : c->chat_ids_) {
-        name = chat_title_map[chat_id];
-        wname = converter.from_bytes(name);
-        msg.append(wname);
+        msg.append(chat_title_map[chat_id]);
         msg.push_back(' ');
         msg.append(std::to_wstring(chat_id));
         msg.push_back('\n');
     }
 
     chat::push_msg(msg.c_str(), msg.length(), L"System", 6, YELLOW);
+}
+
+static std::wstring_view get_username(std::int64_t user_id)
+{
+    auto it = user_map.find(user_id);
+    return it == user_map.end() ?
+           std::wstring_view(L"Unknown user") :
+           std::wstring_view(it->second);
+}
+
+static std::wstring_view get_chat_title(std::int64_t chat_id)
+{
+    auto it = chat_title_map.find(chat_id);
+    return it == chat_title_map.end() ?
+           std::wstring_view(L"Unknown chat") :
+           std::wstring_view(it->second);
 }
 
 HANDLER_IMPL(updateNewMessage, update_new_msg)
@@ -287,8 +305,28 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
         text = static_cast<td_api::messageText &>(*update_new_msg->message_->content_).text_->text_;
     }
 
+    std::wstring_view sender_name;
+    if (update_new_msg->message_->sender_id_->get_id() == td_api::messageSenderUser::ID) {
+        sender_name = get_username(static_cast<td_api::messageSenderUser &>(*update_new_msg->message_->sender_id_).user_id_);
+    } else {
+        sender_name = get_chat_title(static_cast<td_api::messageSenderChat &>(*update_new_msg->message_->sender_id_).chat_id_);
+    }
+
     std::wstring wstr = converter.from_bytes(text);
-    chat::push_msg(wstr.c_str(), wstr.length(), L"Msg", 3, RED);
+    chat::push_msg(wstr.c_str(), wstr.length(), &sender_name[0], sender_name.length(), RED);
+}
+
+HANDLER_IMPL(user, me)
+{
+    username = converter.from_bytes(me->first_name_);
+    ted::set_placeholder(username.c_str());
+    state = State::FREETIME;
+}
+
+HANDLER_IMPL(updateUser, update_user)
+{
+    auto user_id = update_user->user_->id_;
+    user_map.insert({user_id, converter.from_bytes(update_user->user_->first_name_)});
 }
 
 CMD_IMPL(c, args)
