@@ -79,6 +79,7 @@ void ted::render()
                 (int*)ted_placeholder, ted_placeholder_len,
                 pos, FONT_SIZE, 0, TED_PLACEHOLDER_COLOR);
     } else {
+        ted_placeholder_len = 0;
         common::draw_lines(pos, ted_lines, TED_FG_COLOR);
     }
 
