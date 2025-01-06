@@ -27,7 +27,7 @@ int main(int argc, char *argv[])
     tgclient::init(argv[1], argv[2]);
 
     while (!WindowShouldClose()) {
-        ClearBackground(BLACK);
+        ClearBackground(CHAT_BG_COLOR);
         if (KEYMAP_MOVE_FORWARD)            ted::try_cursor_motion(ted::MOTION_FORWARD);
         else if (KEYMAP_MOVE_BACKWARD)      ted::try_cursor_motion(ted::MOTION_BACKWARD);
         else if (KEYMAP_MOVE_FORWARD_WORD)  ted::try_cursor_motion(ted::MOTION_FORWARD_WORD);
@@ -56,6 +56,8 @@ int main(int argc, char *argv[])
     CloseWindow();
 }
 
+// TODO: Load chat history
+// TODO: Trim new liens
 // TODO: Panel that shows the current chat info: title, online (maybe)
 // TODO: Panel where you can select chat
 // TODO: Animations
