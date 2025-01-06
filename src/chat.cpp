@@ -66,6 +66,8 @@ void chat::render()
 
         msg_pos.y -= MSG_DISTANCE + msg_block_height;
 
+        if (msg_pos.y+msg_block_height < 0) return;
+
         // If it is an our message we align it to the right and change the author name color
         if (chat_messages[i].is_mine) {
             author_name_color = MY_MSG_COLOR;
