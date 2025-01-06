@@ -15,11 +15,6 @@ struct Message {
     wchar_t *author_name;
     size_t author_name_len;
     bool is_mine;
-    common::Lines lines;
-    void free();
-    static Message create(
-            const wchar_t *text, size_t text_len,
-            const wchar_t *author_name, size_t author_name_len, Color author_name_color);
 };
 
 static Message chat_messages[MAX_MSG_COUNT];
@@ -51,15 +46,21 @@ void chat::render()
         floor((width-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN_LEFT_RIGHT) / common::state.glyph_width);
 
     Color author_name_color;
+    common::Lines lines = {};
     float msg_block_width, msg_block_height;
     Vector2 msg_pos = (Vector2){ .y = height - ted::get_height() };
     for (int i = chat_message_count-1; i >= 0; i--) {
-        msg_block_height = chat_messages[i].lines.len*FONT_SIZE;
+        lines.recalc(
+                chat_messages[i].text,
+                chat_messages[i].text_len,
+                chat_max_msg_line_len);
+
+        msg_block_height = lines.len*FONT_SIZE;
         msg_block_height += FONT_SIZE; // reserve place for 'username'
         msg_block_height += 2*MSG_TEXT_PADDING;
 
         // calculate width
-        msg_block_width = calc_max_line(chat_messages[i].lines)*common::state.glyph_width;
+        msg_block_width = calc_max_line(lines)*common::state.glyph_width;
         size_t author_name_width = chat_messages[i].author_name_len*common::state.glyph_width;
         if (msg_block_width < author_name_width) msg_block_width = author_name_width;
         msg_block_width += 2*MSG_TEXT_PADDING;
@@ -94,8 +95,7 @@ void chat::render()
         // draw message
         common::draw_lines(
                 (Vector2){ msg_pos.x+MSG_TEXT_PADDING, msg_pos.y+MSG_TEXT_PADDING+FONT_SIZE },
-                chat_messages[i].lines,
-                MSG_FG_COLOR);
+                lines, MSG_FG_COLOR);
     }
 }
 
@@ -121,7 +121,6 @@ void chat::push_msg(std::wstring_view text, std::wstring_view author_name, bool 
     new_msg.text = (wchar_t *) MemAlloc(text_size);
     new_msg.text_len = text.length();
     memcpy(new_msg.text, &text[0], text_size);
-    new_msg.lines.recalc(new_msg.text, new_msg.text_len, chat_max_msg_line_len);
 
     // Copy author name
     size_t author_name_size = author_name.length() * sizeof(int);
