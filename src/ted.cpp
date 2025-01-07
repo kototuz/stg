@@ -18,6 +18,7 @@ struct Pos {
 
 static common::Lines ted_lines;
 static Pos ted_cursor_pos;
+static bool ted_cursor_has_space = false;
 static size_t ted_max_line_len;
 static wchar_t ted_buffer[MAX_MSG_LEN];
 static size_t  ted_buffer_len = 0;
@@ -26,7 +27,7 @@ static size_t ted_placeholder_len;
 
 static void move_cursor_to_ptr(wchar_t *text_ptr)
 {
-    Pos pos = { ted_cursor_pos.row > 0 ? ted_cursor_pos.row-1 : 0, 0 };
+    Pos pos = { 0, 0 };
     common::Line line = ted_lines.items[pos.row];
     size_t real_line_len = line.len + line.trim_whitespace_count;
     while (&line.text[pos.col] != text_ptr) {
@@ -40,7 +41,13 @@ static void move_cursor_to_ptr(wchar_t *text_ptr)
         }
     }
 
-    if (pos.col > ted_max_line_len) pos.col = ted_max_line_len;
+    if (pos.col > ted_max_line_len) {
+        pos.col = ted_max_line_len;
+        ted_cursor_has_space = true;
+    } else {
+        ted_cursor_has_space = false;
+    }
+
     ted_cursor_pos = pos;
 }
 
@@ -179,7 +186,7 @@ void ted::insert_symbol(int s)
     if (ted_buffer_len+1 >= MAX_MSG_LEN) return;
 
     // move text after cursor
-    wchar_t *text_curr_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
+    wchar_t *text_curr_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col+ted_cursor_has_space];
     wchar_t *text_end_ptr = &ted_buffer[ted_buffer_len];
     size_t size = (text_end_ptr - text_curr_ptr) * sizeof(int);
     memmove(text_curr_ptr+1, text_curr_ptr, size);
@@ -194,6 +201,7 @@ void ted::insert_symbol(int s)
 void ted::delete_symbols(size_t count)
 {
     if (ted_buffer_len < count) return;
+    if (ted_cursor_pos.col == 0 && ted_cursor_pos.row == 0) return;
 
     wchar_t *text_curr_ptr = &ted_lines.items[ted_cursor_pos.row].text[ted_cursor_pos.col];
     wchar_t *text_end_ptr = &ted_buffer[ted_buffer_len];
