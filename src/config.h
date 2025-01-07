@@ -4,12 +4,14 @@
 #define DEFAULT_WIDTH  800
 #define DEFAULT_HEIGHT 600
 
-#define FONT_PATH        "resources/JetBrainsMono-Regular.ttf"
-#define FONT_SIZE        48.0f
 #define FONT_GLYPH_COUNT 9608
 
 #define CHAT_BG_COLOR (Color){0x0f,0x0f,0x0f,0xff}
 
+#define MSG_AUTHOR_NAME_FONT_PATH  "resources/JetBrainsMono-Regular.ttf"
+#define MSG_AUTHOR_NAME_FONT_SIZE  35.0f
+#define MSG_TEXT_FONT_PATH         "resources/JetBrainsMono-Regular.ttf"
+#define MSG_TEXT_FONT_SIZE         45.0f
 #define MSG_BG_COLOR               (Color){0x21,0x21,0x21,0xff}
 #define MSG_FG_COLOR               WHITE
 #define MSG_REC_ROUNDNESS          40
@@ -20,6 +22,8 @@
 #define MY_MSG_COLOR               GREEN
 #define NOT_MY_MSG_COLOR           RED
 
+#define TED_FONT_PATH         "resources/JetBrainsMono-Regular.ttf"
+#define TED_FONT_SIZE         48.0f
 #define TED_BG_COLOR          MSG_BG_COLOR
 #define TED_FG_COLOR          WHITE
 #define TED_CURSOR_CODE       L'▏'

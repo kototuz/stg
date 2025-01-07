@@ -21,7 +21,6 @@ int main(int argc, char *argv[])
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT, "Simple Telegram");
 
-    common::init();
     ted::init();
     chat::init();
     tgclient::init(argv[1], argv[2]);

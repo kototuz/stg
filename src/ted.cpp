@@ -17,13 +17,15 @@ struct Pos {
 };
 
 static common::Lines ted_lines;
-static Pos ted_cursor_pos;
-static bool ted_cursor_has_space = false;
-static size_t ted_max_line_len;
-static wchar_t ted_buffer[MAX_MSG_LEN];
-static size_t  ted_buffer_len = 0;
-static wchar_t ted_placeholder[MAX_PLACEHOLDER_LEN];
-static size_t ted_placeholder_len;
+static Pos           ted_cursor_pos;
+static bool          ted_cursor_has_space = false;
+static size_t        ted_max_line_len;
+static wchar_t       ted_buffer[MAX_MSG_LEN];
+static size_t        ted_buffer_len = 0;
+static wchar_t       ted_placeholder[MAX_PLACEHOLDER_LEN];
+static size_t        ted_placeholder_len;
+static Font          ted_font;
+static size_t        ted_font_glyph_width;
 
 static void move_cursor_to_ptr(wchar_t *text_ptr)
 {
@@ -53,6 +55,13 @@ static void move_cursor_to_ptr(wchar_t *text_ptr)
 
 void ted::init()
 {
+    // Load ted font
+    ted_font = LoadFontEx(
+            TED_FONT_PATH, TED_FONT_SIZE,
+            nullptr, FONT_GLYPH_COUNT);
+    ted_font_glyph_width =
+        TED_FONT_SIZE / ted_font.baseSize * ted_font.glyphs[0].advanceX;
+
     ted_lines = common::Lines{};
     ted_lines.grow_one();
     ted_lines.items[0].text = ted_buffer;
@@ -74,12 +83,12 @@ void ted::render()
     float height = GetScreenHeight();
 
     // Calculate max line
-    ted_max_line_len = floor((width - 2*TED_MARGIN - 2*TED_PADDING)/common::state.glyph_width);
+    ted_max_line_len = floor((width - 2*TED_MARGIN - 2*TED_PADDING)/ted_font_glyph_width);
 
     // Render text editor rectangle
     Rectangle ted_rec = {};
     ted_rec.width = width - 2*TED_MARGIN;
-    ted_rec.height = ted_lines.len*FONT_SIZE + 2*TED_PADDING;
+    ted_rec.height = ted_lines.len*TED_FONT_SIZE + 2*TED_PADDING;
     ted_rec.x = TED_MARGIN;
     ted_rec.y = height - ted_rec.height - TED_MARGIN;
     DrawRectangleRounded(ted_rec, TED_REC_ROUNDNESS/ted_rec.height, TED_REC_SEGMENT_COUNT, TED_BG_COLOR);
@@ -88,20 +97,20 @@ void ted::render()
     Vector2 pos = { ted_rec.x + TED_PADDING, ted_rec.y + TED_PADDING };
     if (ted_buffer_len == 0) {
         DrawTextCodepoints(
-                common::state.font,
+                ted_font,
                 (int*)ted_placeholder, ted_placeholder_len,
-                pos, FONT_SIZE, 0, TED_PLACEHOLDER_COLOR);
+                pos, TED_FONT_SIZE, 0, TED_PLACEHOLDER_COLOR);
     } else {
         ted::set_placeholder(L"Message...");
-        common::draw_lines(pos, ted_lines, TED_FG_COLOR);
+        common::draw_lines(ted_font, TED_FONT_SIZE, pos, ted_lines, TED_FG_COLOR);
     }
 
     // Render cursor
-    pos.x = TED_MARGIN + TED_PADDING + ted_cursor_pos.col*common::state.glyph_width + 1;
-    pos.y = pos.y + ted_cursor_pos.row*FONT_SIZE;
+    pos.x = TED_MARGIN + TED_PADDING + ted_cursor_pos.col*ted_font_glyph_width + 1;
+    pos.y = pos.y + ted_cursor_pos.row*TED_FONT_SIZE;
     DrawTextCodepoint(
-            common::state.font, TED_CURSOR_CODE,
-            pos, FONT_SIZE,
+            ted_font, TED_CURSOR_CODE,
+            pos, TED_FONT_SIZE,
             TED_CURSOR_COLOR);
 }
 
@@ -243,7 +252,7 @@ void ted::delete_line()
 
 float ted::get_height()
 {
-    return ted_lines.len*FONT_SIZE + TED_MARGIN + 2*TED_PADDING;
+    return ted_lines.len*TED_FONT_SIZE + TED_MARGIN + 2*TED_PADDING;
 }
 
 std::wstring_view ted::get_text()

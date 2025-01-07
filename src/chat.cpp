@@ -18,11 +18,34 @@ struct Message {
 };
 
 static Message chat_messages[MAX_MSG_COUNT];
-static size_t chat_message_count;
-static size_t chat_max_msg_line_len;
+static size_t  chat_message_count;
+static size_t  chat_max_msg_line_len;
+static Font    chat_msg_author_name_font;
+static size_t  chat_msg_author_name_font_glyph_width;
+static Font    chat_msg_text_font;
+static size_t  chat_msg_text_font_glyph_width;
 
 void chat::init()
 {
+    // Load msg author name font
+    chat_msg_author_name_font = LoadFontEx(
+            MSG_AUTHOR_NAME_FONT_PATH,
+            MSG_AUTHOR_NAME_FONT_SIZE,
+            nullptr, FONT_GLYPH_COUNT);
+    chat_msg_author_name_font_glyph_width =
+        MSG_AUTHOR_NAME_FONT_SIZE /
+        chat_msg_author_name_font.baseSize *
+        chat_msg_author_name_font.glyphs[0].advanceX;
+
+    // Load msg text font
+    chat_msg_text_font = LoadFontEx(
+            MSG_TEXT_FONT_PATH,
+            MSG_TEXT_FONT_SIZE,
+            nullptr, FONT_GLYPH_COUNT);
+    chat_msg_text_font_glyph_width =
+        MSG_TEXT_FONT_SIZE /
+        chat_msg_text_font.baseSize *
+        chat_msg_text_font.glyphs[0].advanceX;
 }
 
 static size_t calc_max_line(common::Lines lines)
@@ -43,7 +66,7 @@ void chat::render()
 
     // Calculate max line
     chat_max_msg_line_len =
-        floor((width-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN_LEFT_RIGHT) / common::state.glyph_width);
+        floor((width-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN_LEFT_RIGHT) / chat_msg_text_font_glyph_width);
 
     Color author_name_color;
     common::Lines lines = {};
@@ -55,13 +78,13 @@ void chat::render()
                 chat_messages[i].text_len,
                 chat_max_msg_line_len);
 
-        msg_block_height = lines.len*FONT_SIZE;
-        msg_block_height += FONT_SIZE; // reserve place for 'username'
+        msg_block_height = lines.len*MSG_TEXT_FONT_SIZE;
+        msg_block_height += MSG_AUTHOR_NAME_FONT_SIZE; // reserve place for 'username'
         msg_block_height += 2*MSG_TEXT_PADDING;
 
         // calculate width
-        msg_block_width = calc_max_line(lines)*common::state.glyph_width;
-        size_t author_name_width = chat_messages[i].author_name_len*common::state.glyph_width;
+        msg_block_width = calc_max_line(lines)*chat_msg_text_font_glyph_width;
+        size_t author_name_width = chat_messages[i].author_name_len*chat_msg_author_name_font_glyph_width;
         if (msg_block_width < author_name_width) msg_block_width = author_name_width;
         msg_block_width += 2*MSG_TEXT_PADDING;
 
@@ -86,15 +109,16 @@ void chat::render()
 
         // draw username
         DrawTextCodepoints(
-                common::state.font,
+                chat_msg_author_name_font,
                 (const int *)chat_messages[i].author_name,
                 chat_messages[i].author_name_len,
                 (Vector2){msg_pos.x+MSG_TEXT_PADDING, msg_pos.y+MSG_TEXT_PADDING},
-                FONT_SIZE, 0, author_name_color);
+                MSG_AUTHOR_NAME_FONT_SIZE, 0, author_name_color);
 
         // draw message
         common::draw_lines(
-                (Vector2){ msg_pos.x+MSG_TEXT_PADDING, msg_pos.y+MSG_TEXT_PADDING+FONT_SIZE },
+                chat_msg_text_font, MSG_TEXT_FONT_SIZE,
+                (Vector2){ msg_pos.x+MSG_TEXT_PADDING, msg_pos.y+MSG_TEXT_PADDING+MSG_TEXT_FONT_SIZE },
                 lines, MSG_FG_COLOR);
     }
 }

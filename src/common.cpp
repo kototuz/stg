@@ -5,26 +5,16 @@
 #include "common.h"
 #include "config.h"
 
-common::State common::state;
-
-void common::init()
-{
-    // NOTE: We support only monospaced fonts
-    state.font = LoadFontEx(FONT_PATH, FONT_SIZE, 0, FONT_GLYPH_COUNT);
-    state.glyph_width =
-        FONT_SIZE / state.font.baseSize * state.font.glyphs[0].advanceX;
-}
-
-void common::draw_lines(Vector2 pos, common::Lines lines, Color color)
+void common::draw_lines(Font font, size_t font_size, Vector2 pos, common::Lines lines, Color color)
 {
     size_t begin_x = pos.x;
     for (size_t i = 0; i < lines.len; i++) {
         DrawTextCodepoints(
-                state.font,
+                font,
                 (const int *)lines.items[i].text,
                 lines.items[i].len,
-                pos, FONT_SIZE, 0, color);
-        pos.y += FONT_SIZE;
+                pos, font_size, 0, color);
+        pos.y += font_size;
         pos.x = begin_x;
     }
 }
