@@ -19,7 +19,6 @@ struct Message {
 
 static Message chat_messages[MAX_MSG_COUNT];
 static size_t  chat_message_count;
-static size_t  chat_max_msg_line_len;
 static Font    chat_msg_author_name_font;
 static size_t  chat_msg_author_name_font_glyph_width;
 static Font    chat_msg_text_font;
@@ -48,25 +47,14 @@ void chat::init()
         chat_msg_text_font.glyphs[0].advanceX;
 }
 
-static size_t calc_max_line(common::Lines lines)
-{
-    size_t result = 0;
-    for (size_t i = 0; i < lines.len; i++) {
-        if (lines.items[i].len > result)
-            result = lines.items[i].len;
-    }
-
-    return result;
-}
-
 void chat::render()
 {
     float height = GetScreenHeight();
     float width  = GetScreenWidth();
 
-    // Calculate max line
-    chat_max_msg_line_len =
-        floor((width-2*MSG_TEXT_PADDING-2*MSG_TEXT_MARGIN_LEFT_RIGHT) / chat_msg_text_font_glyph_width);
+    // Calculate max line width
+    float max_msg_line_width =
+        floor(width - 2*MSG_TEXT_PADDING - 2*MSG_TEXT_MARGIN_LEFT_RIGHT);
 
     Color author_name_color;
     common::Lines lines = {};
@@ -74,17 +62,22 @@ void chat::render()
     Vector2 msg_pos = (Vector2){ .y = height - ted::get_height() };
     for (int i = chat_message_count-1; i >= 0; i--) {
         lines.recalc(
+                chat_msg_text_font,
+                MSG_TEXT_FONT_SIZE,
                 chat_messages[i].text,
                 chat_messages[i].text_len,
-                chat_max_msg_line_len);
+                max_msg_line_width);
 
         msg_block_height = lines.len*MSG_TEXT_FONT_SIZE;
         msg_block_height += MSG_AUTHOR_NAME_FONT_SIZE; // reserve place for 'username'
         msg_block_height += 2*MSG_TEXT_PADDING;
 
         // calculate width
-        msg_block_width = calc_max_line(lines)*chat_msg_text_font_glyph_width;
-        size_t author_name_width = chat_messages[i].author_name_len*chat_msg_author_name_font_glyph_width;
+        msg_block_width = lines.max_line_width(chat_msg_text_font);
+        int author_name_width = common::measure_wtext(
+                chat_msg_author_name_font,
+                chat_messages[i].author_name,
+                chat_messages[i].author_name_len);
         if (msg_block_width < author_name_width) msg_block_width = author_name_width;
         msg_block_width += 2*MSG_TEXT_PADDING;
 

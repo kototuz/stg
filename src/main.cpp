@@ -55,7 +55,6 @@ int main(int argc, char *argv[])
     CloseWindow();
 }
 
-// TODO: Support for non-monospace fonts
 // TODO: Reply messages
 // TODO: Different font size (maybe also font) for the message author name
 // TODO: Load chat history

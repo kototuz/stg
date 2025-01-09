@@ -1,9 +1,18 @@
 #include <cstdlib>
 #include <cstdio>
 #include <cstring>
+#include <cassert>
 
 #include "common.h"
 #include "config.h"
+
+static float get_glyph_width(Font font, wchar_t codepoint)
+{
+    int cp_idx = GetGlyphIndex(font, codepoint);
+    return (font.glyphs[cp_idx].advanceX == 0) ?
+           font.recs[cp_idx].width :
+           font.glyphs[cp_idx].advanceX;
+}
 
 void common::draw_lines(Font font, size_t font_size, Vector2 pos, common::Lines lines, Color color)
 {
@@ -17,6 +26,17 @@ void common::draw_lines(Font font, size_t font_size, Vector2 pos, common::Lines 
         pos.y += font_size;
         pos.x = begin_x;
     }
+}
+
+float common::Lines::max_line_width(Font font)
+{
+    float result = 0;
+    for (size_t i = 0; i < this->len; i++) {
+        float line_len = measure_wtext(font, this->items[i].text, this->items[i].len);
+        if (line_len > result) result = line_len;
+    }
+
+    return result;
 }
 
 void common::Lines::grow_one()
@@ -42,7 +62,18 @@ void common::Lines::grow_one()
     this->items = new_buf;
 }
 
-void common::Lines::recalc(wchar_t *text, size_t text_len, size_t max_line)
+Vector2 common::Lines::get_vec_to_pos(Font font, int font_size, size_t row, size_t col)
+{
+    Vector2 ret = { .y = (float) row*font_size };
+    Line line = this->items[row];
+    for (size_t i = 0; i < col; i++) {
+        ret.x += get_glyph_width(font, line.text[i]);
+    }
+
+    return ret;
+}
+
+void common::Lines::recalc(Font font, int font_size, wchar_t *text, size_t text_len, float max_line_width)
 {
     // clear all lines
     this->len = 0;
@@ -50,15 +81,23 @@ void common::Lines::recalc(wchar_t *text, size_t text_len, size_t max_line)
     this->grow_one();
     this->items[0].text = text;
 
-    size_t last_word_begin = 0;
-    common::Line *curr_line = &this->items[0];
+    float curr_line_width = 0;
+    float last_word_begin_on_width = 0;
+    size_t last_word_begin_idx = 0;
+    Line *curr_line = &this->items[0];
     for (size_t i = 0; i < text_len; i++) {
         if (text[i] == '\n') {
             this->grow_one();
             curr_line = &this->items[this->len-1];
             curr_line->len = 0;
             curr_line->text = &text[i+1];
-        } else if (curr_line->len+1 > max_line) {
+            curr_line_width = 0;
+            last_word_begin_on_width = 0;
+            continue;
+        }
+
+        float glyph_width = get_glyph_width(font, text[i]);
+        if (curr_line_width+glyph_width > max_line_width) {
             if (text[i] == ' ') {
                 do {
                     curr_line->trim_whitespace_count += 1;
@@ -68,21 +107,46 @@ void common::Lines::recalc(wchar_t *text, size_t text_len, size_t max_line)
                 curr_line = &this->items[this->len-1];
                 curr_line->len = 1;
                 curr_line->text = &text[i];
-            } else if (i - last_word_begin >= max_line) {
+                curr_line_width = glyph_width;
+            } else if (curr_line_width - last_word_begin_on_width + glyph_width >= max_line_width) {
                 this->grow_one();
                 curr_line = &this->items[this->len-1];
                 curr_line->len = 1;
                 curr_line->text = &text[i];
+                curr_line_width = glyph_width;
+                last_word_begin_on_width = 0;
             } else {
-                curr_line->len -= i - last_word_begin + 1;
+                curr_line->len -= i - last_word_begin_idx + 1;
                 this->grow_one();
                 curr_line = &this->items[this->len-1];
-                curr_line->text = &text[last_word_begin];
-                curr_line->len = i - last_word_begin + 1;
+                curr_line->text = &text[last_word_begin_idx];
+                curr_line->len = i - last_word_begin_idx + 1;
+                curr_line_width = curr_line_width - last_word_begin_on_width + glyph_width;
+                last_word_begin_on_width = 0;
             }
         } else {
+            curr_line_width += glyph_width;
             curr_line->len += 1;
-            if (text[i] == ' ') last_word_begin = i+1;
+            if (text[i] == ' ') {
+                last_word_begin_on_width = curr_line_width;
+                last_word_begin_idx = i+1;
+            }
         }
+        /*puts("========================");*/
+        /*printf("Last word begin on: %f\n", last_word_begin_on_width);*/
+        /*printf("Glyph width:        %f\n", glyph_width);*/
+        /*printf("Max line width:     %f\n", max_line_width);*/
+        /*printf("Current line width: %f\n", curr_line_width);*/
+        /*puts("========================");*/
     }
+}
+
+float common::measure_wtext(Font font, wchar_t *text, size_t text_len)
+{
+    float result = 0;
+    for (size_t i = 0; i < text_len; i++) {
+        result += get_glyph_width(font, text[i]);
+    }
+
+    return result;
 }

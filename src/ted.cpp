@@ -19,7 +19,7 @@ struct Pos {
 static common::Lines ted_lines;
 static Pos           ted_cursor_pos;
 static bool          ted_cursor_has_space = false;
-static size_t        ted_max_line_len;
+static float         ted_max_line_width;
 static wchar_t       ted_buffer[MAX_MSG_LEN];
 static size_t        ted_buffer_len = 0;
 static wchar_t       ted_placeholder[MAX_PLACEHOLDER_LEN];
@@ -43,8 +43,8 @@ static void move_cursor_to_ptr(wchar_t *text_ptr)
         }
     }
 
-    if (pos.col > ted_max_line_len) {
-        pos.col = ted_max_line_len;
+    if (pos.col > ted_max_line_width) {
+        pos.col = ted_max_line_width;
         ted_cursor_has_space = true;
     } else {
         ted_cursor_has_space = false;
@@ -83,7 +83,7 @@ void ted::render()
     float height = GetScreenHeight();
 
     // Calculate max line
-    ted_max_line_len = floor((width - 2*TED_MARGIN - 2*TED_PADDING)/ted_font_glyph_width);
+    ted_max_line_width = floor(width - 2*TED_MARGIN - 2*TED_PADDING);
 
     // Render text editor rectangle
     Rectangle ted_rec = {};
@@ -106,12 +106,10 @@ void ted::render()
     }
 
     // Render cursor
-    pos.x = TED_MARGIN + TED_PADDING + ted_cursor_pos.col*ted_font_glyph_width + 1;
-    pos.y = pos.y + ted_cursor_pos.row*TED_FONT_SIZE;
-    DrawTextCodepoint(
-            ted_font, TED_CURSOR_CODE,
-            pos, TED_FONT_SIZE,
-            TED_CURSOR_COLOR);
+    Vector2 vec_to_pos = ted_lines.get_vec_to_pos(ted_font, TED_FONT_SIZE, ted_cursor_pos.row, ted_cursor_pos.col);
+    pos.x = TED_MARGIN + TED_PADDING + vec_to_pos.x;
+    pos.y += vec_to_pos.y;
+    DrawLine(pos.x, pos.y, pos.x, pos.y+TED_FONT_SIZE, TED_CURSOR_COLOR);
 }
 
 void ted::try_cursor_motion(Motion m)
@@ -203,7 +201,7 @@ void ted::insert_symbol(int s)
     *text_curr_ptr = s;
     ted_buffer_len += 1;
 
-    ted_lines.recalc(ted_buffer, ted_buffer_len, ted_max_line_len);
+    ted_lines.recalc(ted_font, TED_FONT_SIZE, ted_buffer, ted_buffer_len, ted_max_line_width);
     move_cursor_to_ptr(text_curr_ptr+1);
 }
 
@@ -220,7 +218,7 @@ void ted::delete_symbols(size_t count)
     memmove(new_curr_text_ptr, text_curr_ptr, size);
     ted_buffer_len -= text_curr_ptr - new_curr_text_ptr;
 
-    ted_lines.recalc(ted_buffer, ted_buffer_len, ted_max_line_len);
+    ted_lines.recalc(ted_font, TED_FONT_SIZE, ted_buffer, ted_buffer_len, ted_max_line_width);
     move_cursor_to_ptr(new_curr_text_ptr);
 }
 
