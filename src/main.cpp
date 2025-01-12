@@ -24,11 +24,6 @@
     H(updateNewMessage) \
     H(updateUser) \
 
-#define REQ_ANSWER_HANDLERS \
-    H(Object) /*when you don't need an answer*/ \
-    H(chats) \
-    H(user)
-
 #define COMMANDS \
     C(l)  /*logout*/ \
     C(c)  /*list chats*/ \
@@ -40,6 +35,10 @@
 
 #define TG_CLIENT_WAIT_TIME 0.0
 
+#define UPDATE_ID             0
+#define OUR_REQUEST_ID        1
+#define OUR_SILENT_REQUEST_ID 2
+
 namespace td_api = td::td_api;
 
 struct Args {
@@ -49,13 +48,6 @@ struct Args {
 
 typedef void (*Handler)(td_api::object_ptr<td_api::Object>);
 typedef void (*Command)(Args);
-
-enum ReqAnswerHandlerId {
-    IGNORE, // handler ids must start with 1
-#define H(type) type##_handler_id,
-    REQ_ANSWER_HANDLERS
-#undef H
-};
 
 enum State {
     NONE,
@@ -67,7 +59,6 @@ enum State {
 // Declare all handlers
 #define H(type) static void type##_handler(td_api::object_ptr<td_api::type>);
 UPDATE_HANDLERS
-REQ_ANSWER_HANDLERS
 #undef H
 
 // Declare command functions
@@ -92,12 +83,6 @@ static std::map<std::int64_t, Handler> update_handler_map = {
     UPDATE_HANDLERS
 #undef H
 };
-static Handler req_answer_handler_map[] = {
-    (Handler) nullptr, // handler ids starts with 1 => skip first
-#define H(type) (Handler) type##_handler,
-    REQ_ANSWER_HANDLERS
-#undef H
-};
 static std::map<std::wstring_view, Command> command_map = {
 #define C(name) { L""#name, name##_cmd },
     COMMANDS
@@ -109,9 +94,10 @@ static void tgclient_init(const char *api_id, const char *api_hash);
 static void tgclient_update();
 static void tgclient_send_msg();
 static void tgclient_process_update();
-static void tgclient_request();
 static std::wstring_view tgclient_get_username(std::int64_t user_id);
 static std::wstring_view tgclient_get_chat_title(std::int64_t chat_id);
+template<typename T> static td_api::object_ptr<T> tgclient_request(td_api::object_ptr<td_api::Function> req);
+#define tgclient_silent_request(req) manager.send(client_id, OUR_SILENT_REQUEST_ID, req)
 
 // Util functions
 static std::vector<std::wstring_view> split(std::wstring_view src);
@@ -182,7 +168,7 @@ static void tgclient_init(const char *api_id, const char *api_hash)
     client_id = manager.create_client_id();
 
     // Start connection
-    manager.send(client_id, 1, td_api::make_object<td_api::getOption>("version"));
+    tgclient_silent_request(td_api::make_object<td_api::getOption>("version"));
 
     global_api_id = api_id;
     global_api_hash = api_hash;
@@ -194,10 +180,16 @@ static void tgclient_update()
 {
     auto resp = manager.receive(TG_CLIENT_WAIT_TIME);
     if (resp.object == nullptr) return;
-    if (resp.request_id == 0) {
+    if (resp.request_id == UPDATE_ID) {
         tgclient_process_update(std::move(resp.object));
+    } else if (resp.request_id == OUR_SILENT_REQUEST_ID) {
+        if (resp.object->get_id() == td_api::error::ID) {
+            std::wstring error_msg = converter.from_bytes(
+                    static_cast<td_api::error&>(*resp.object).message_);
+            ted::set_placeholder(error_msg.c_str());
+        }
     } else {
-        (req_answer_handler_map[resp.request_id])(std::move(resp.object));
+        assert(0 && "Unexpected request id");
     }
 }
 
@@ -248,27 +240,84 @@ static void tgclient_send_msg()
                 message_content->text_ = td_api::make_object<td_api::formattedText>();
                 message_content->text_->text_ = std::move(text_as_str);
                 send_message->input_message_content_ = std::move(message_content);
-                manager.send(client_id, Object_handler_id, std::move(send_message));
+                tgclient_silent_request(std::move(send_message));
             }
             break;
 
         case WAIT_CODE:
-            manager.send(
-                    client_id,
-                    Object_handler_id,
+            tgclient_silent_request(
                     td_api::make_object<td_api::checkAuthenticationCode>(text_as_str));
             break;
 
         case WAIT_PHONE_NUMBER:
-            manager.send(
-                    client_id,
-                    Object_handler_id,
+            tgclient_silent_request(
                     td_api::make_object<td_api::setAuthenticationPhoneNumber>(text_as_str, nullptr));
             break;
     }
 
     ted::clear();
 }
+
+static std::wstring_view tgclient_get_username(std::int64_t user_id)
+{
+    auto it = user_map.find(user_id);
+    return it == user_map.end() ?
+           std::wstring_view(L"Unknown user") :
+           std::wstring_view(it->second);
+}
+
+static std::wstring_view tgclient_get_chat_title(std::int64_t chat_id)
+{
+    auto it = chat_title_map.find(chat_id);
+    return it == chat_title_map.end() ?
+           std::wstring_view(L"Unknown chat") :
+           std::wstring_view(it->second);
+}
+
+template<typename T>
+static td_api::object_ptr<T> tgclient_request(td_api::object_ptr<td_api::Function> req)
+{
+    manager.send(client_id, OUR_REQUEST_ID, std::move(req));
+    std::wstring error_msg;
+    for (;;) {
+        auto resp = manager.receive(TG_CLIENT_WAIT_TIME);
+        if (resp.object == nullptr) continue;
+        if (resp.request_id == OUR_REQUEST_ID) {
+            switch (resp.object->get_id()) {
+                case T::ID: return td_api::move_object_as<T>(resp.object);
+                case td_api::error::ID:
+                    error_msg = converter.from_bytes(static_cast<td_api::error&>(*resp.object).message_);
+                    ted::set_placeholder(error_msg.c_str());
+                    return nullptr;
+
+                default: assert(0 && "Unexpected object id");
+            }
+        } else if (resp.request_id == UPDATE_ID) {
+            tgclient_process_update(std::move(resp.object));
+        } else if (resp.request_id == OUR_SILENT_REQUEST_ID && resp.object->get_id() == td_api::error::ID) {
+            puts("Get silent request");
+            error_msg = converter.from_bytes(static_cast<td_api::error&>(*resp.object).message_);
+            ted::set_placeholder(error_msg.c_str());
+        }
+    }
+}
+
+static std::int64_t to_int64_t(std::wstring_view text)
+{
+    size_t i = 0;
+    std::int64_t res = 0;
+    std::int64_t factor = 1;
+    if (text[0] == '-') { factor = -1; i = 1; }
+
+    for (; i < text.length(); i++) {
+        assert(isdigit(text[i]));
+        res = 10*res + (text[i] - '0');
+    }
+
+    return res * factor;
+}
+
+// HANDLERS //////////////////
 
 HANDLER_IMPL(updateAuthorizationState, auth_update)
 {
@@ -291,15 +340,17 @@ HANDLER_IMPL(authorizationStateWaitTdlibParameters, wait_params)
     params->system_version_ = "Debian 12";
     params->application_version_ = "0.1";
     ted::set_placeholder(L"sending tdlib parameters...");
-    manager.send(client_id, Object_handler_id, td_api::move_object_as<td_api::Function>(params));
+    tgclient_silent_request(td_api::move_object_as<td_api::Function>(params));
 }
 
 HANDLER_IMPL(authorizationStateReady, update)
 {
     ted::set_placeholder(L"authorized");
 
-    // Get user name
-    manager.send(client_id, user_handler_id, td_api::make_object<td_api::getMe>());
+    // Get user id
+    auto me = tgclient_request<td_api::user>(td_api::make_object<td_api::getMe>());
+    user_id = me->id_;
+    state = State::FREETIME;
 }
 
 HANDLER_IMPL(authorizationStateWaitPhoneNumber, auth_state)
@@ -326,50 +377,6 @@ HANDLER_IMPL(authorizationStateWaitCode, auth_state)
 HANDLER_IMPL(updateNewChat, update_new_chat)
 {
     chat_title_map.insert({update_new_chat->chat_->id_, converter.from_bytes(update_new_chat->chat_->title_)});
-}
-
-HANDLER_IMPL(chats, c)
-{
-    std::wstring msg;
-    for (auto chat_id : c->chat_ids_) {
-        msg.append(chat_title_map[chat_id]);
-        msg.push_back(' ');
-        msg.append(std::to_wstring(chat_id));
-        msg.push_back('\n');
-    }
-
-    chat::push_msg(msg, L"System");
-}
-
-static std::wstring_view tgclient_get_username(std::int64_t user_id)
-{
-    auto it = user_map.find(user_id);
-    return it == user_map.end() ?
-           std::wstring_view(L"Unknown user") :
-           std::wstring_view(it->second);
-}
-
-static std::wstring_view tgclient_get_chat_title(std::int64_t chat_id)
-{
-    auto it = chat_title_map.find(chat_id);
-    return it == chat_title_map.end() ?
-           std::wstring_view(L"Unknown chat") :
-           std::wstring_view(it->second);
-}
-
-static std::int64_t to_int64_t(std::wstring_view text)
-{
-    size_t i = 0;
-    std::int64_t res = 0;
-    std::int64_t factor = 1;
-    if (text[0] == '-') { factor = -1; i = 1; }
-
-    for (; i < text.length(); i++) {
-        assert(isdigit(text[i]));
-        res = 10*res + (text[i] - '0');
-    }
-
-    return res * factor;
 }
 
 HANDLER_IMPL(updateNewMessage, update_new_msg)
@@ -399,12 +406,6 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
     chat::push_msg(wstr, sender_name);
 }
 
-HANDLER_IMPL(user, me)
-{
-    user_id = me->id_;
-    state = State::FREETIME;
-}
-
 HANDLER_IMPL(updateUser, update_user)
 {
     auto user_id = update_user->user_->id_;
@@ -413,12 +414,23 @@ HANDLER_IMPL(updateUser, update_user)
 
 CMD_IMPL(c, args)
 {
-    manager.send(client_id, chats_handler_id, td_api::make_object<td_api::getChats>(nullptr, 10));
+    auto c = tgclient_request<td_api::chats>(
+            td_api::make_object<td_api::getChats>(nullptr, 10));
+
+    std::wstring msg;
+    for (auto chat_id : c->chat_ids_) {
+        msg.append(chat_title_map[chat_id]);
+        msg.push_back(' ');
+        msg.append(std::to_wstring(chat_id));
+        msg.push_back('\n');
+    }
+
+    chat::push_msg(msg, L"System");
 }
 
 CMD_IMPL(l, args)
 {
-    manager.send(client_id, Object_handler_id, td_api::make_object<td_api::logOut>());
+    tgclient_silent_request(td_api::make_object<td_api::logOut>());
 }
 
 CMD_IMPL(sc, args)
