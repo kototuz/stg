@@ -47,7 +47,7 @@ void chat::init()
         chat_msg_text_font.glyphs[0].advanceX;
 }
 
-void chat::render()
+void chat::render(float bottom_margin)
 {
     float height = GetScreenHeight();
     float width  = GetScreenWidth();
@@ -59,7 +59,7 @@ void chat::render()
     Color author_name_color;
     common::Lines lines = {};
     float msg_block_width, msg_block_height;
-    Vector2 msg_pos = (Vector2){ .y = height - ted::get_height() };
+    Vector2 msg_pos = (Vector2){ .y = height - bottom_margin };
     for (int i = chat_message_count-1; i >= 0; i--) {
         lines.recalc(
                 chat_msg_text_font,

@@ -9,7 +9,7 @@
 
 namespace chat {
     void init();
-    void render();
+    void render(float bottom_margin);
     void push_msg(std::wstring_view text, std::wstring_view author_name, bool is_mine = false);
 }
 
