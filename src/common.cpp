@@ -141,7 +141,7 @@ void common::Lines::recalc(Font font, int font_size, wchar_t *text, size_t text_
     }
 }
 
-float common::measure_wtext(Font font, wchar_t *text, size_t text_len)
+float common::measure_wtext(Font font, const wchar_t *text, size_t text_len)
 {
     float result = 0;
     for (size_t i = 0; i < text_len; i++) {

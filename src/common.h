@@ -24,7 +24,7 @@ struct Lines {
 };
 
 void draw_lines(Font font, size_t font_size, Vector2 pos, Lines lines, Color color);
-float measure_wtext(Font font, wchar_t *text, size_t text_len); // Function like 'MeasureText' but for 'wchar_t *'
+float measure_wtext(Font font, const wchar_t *text, size_t text_len); // Function like 'MeasureText' but for 'wchar_t *'
 }
 
 #endif

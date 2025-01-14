@@ -4,25 +4,26 @@
 #include <cstring>
 #include <cstdio>
 
+#include <raylib.h>
+
 #include "chat.h"
 #include "common.h"
 #include "ted.h"
 #include "config.h"
 
-struct Message {
-    wchar_t *text;
-    size_t text_len;
-    wchar_t *author_name;
-    size_t author_name_len;
-    bool is_mine;
-};
+static Font      chat_msg_author_name_font;
+static size_t    chat_msg_author_name_font_glyph_width;
+static Font      chat_msg_text_font;
+static size_t    chat_msg_text_font_glyph_width;
+static chat::Msg chat_messages[MESSAGES_CAPACITY];
+static size_t    chat_message_count = 0;
 
-static Message chat_messages[MAX_MSG_COUNT];
-static size_t  chat_message_count;
-static Font    chat_msg_author_name_font;
-static size_t  chat_msg_author_name_font_glyph_width;
-static Font    chat_msg_text_font;
-static size_t  chat_msg_text_font_glyph_width;
+chat::WStr chat::WStr::from(const char *cstr)
+{
+    WStr result = {};
+    result.data = (wchar_t *) LoadCodepoints(cstr, (int *)&result.len);
+    return result;
+}
 
 void chat::init()
 {
@@ -64,8 +65,8 @@ void chat::render(float bottom_margin)
         lines.recalc(
                 chat_msg_text_font,
                 MSG_TEXT_FONT_SIZE,
-                chat_messages[i].text,
-                chat_messages[i].text_len,
+                chat_messages[i].text.data,
+                chat_messages[i].text.len,
                 max_msg_line_width);
 
         msg_block_height = lines.len*MSG_TEXT_FONT_SIZE;
@@ -76,8 +77,8 @@ void chat::render(float bottom_margin)
         msg_block_width = lines.max_line_width(chat_msg_text_font);
         int author_name_width = common::measure_wtext(
                 chat_msg_author_name_font,
-                chat_messages[i].author_name,
-                chat_messages[i].author_name_len);
+                &chat_messages[i].author_name[0],
+                chat_messages[i].author_name.length());
         if (msg_block_width < author_name_width) msg_block_width = author_name_width;
         msg_block_width += 2*MSG_TEXT_PADDING;
 
@@ -103,8 +104,8 @@ void chat::render(float bottom_margin)
         // draw username
         DrawTextCodepoints(
                 chat_msg_author_name_font,
-                (const int *)chat_messages[i].author_name,
-                chat_messages[i].author_name_len,
+                (const int *)&chat_messages[i].author_name[0],
+                chat_messages[i].author_name.length(),
                 (Vector2){msg_pos.x+MSG_TEXT_PADDING, msg_pos.y+MSG_TEXT_PADDING},
                 MSG_AUTHOR_NAME_FONT_SIZE, 0, author_name_color);
 
@@ -116,36 +117,25 @@ void chat::render(float bottom_margin)
     }
 }
 
-void chat::push_msg(std::wstring_view text, std::wstring_view author_name, bool is_mine)
+void chat::push_msg(Msg msg)
 {
-    assert(text.length() > 0);
-
-    if (chat_message_count >= MAX_MSG_COUNT) {
-        MemFree(chat_messages[0].text);
-        MemFree(chat_messages[0].author_name);
-        memmove(&chat_messages[0],
-                &chat_messages[1],
-                (chat_message_count-1) * sizeof(Message));
+    if (chat_message_count >= MESSAGES_CAPACITY) {
+        UnloadCodepoints((int*)chat_messages[0].text.data);
+        memmove(&chat_messages[0], &chat_messages[1], (chat_message_count-1)*sizeof(chat::Msg));
         chat_message_count -= 1;
     }
 
-    // Create new message
+    chat_messages[chat_message_count++] = msg;
+}
 
-    Message new_msg = {};
 
-    // Copy text
-    size_t text_size = text.length() * sizeof(int);
-    new_msg.text = (wchar_t *) MemAlloc(text_size);
-    new_msg.text_len = text.length();
-    memcpy(new_msg.text, &text[0], text_size);
+chat::Msg *chat::find_msg(std::int64_t msg_id)
+{
+    for (int i = chat_message_count-1; i >= 0; i--) {
+        if (chat_messages[i].id == msg_id) {
+            return &chat_messages[i];
+        }
+    }
 
-    // Copy author name
-    size_t author_name_size = author_name.length() * sizeof(int);
-    new_msg.author_name = (wchar_t *) MemAlloc(author_name_size);
-    new_msg.author_name_len = author_name.length();
-    memcpy(new_msg.author_name, &author_name[0], author_name_size);
-
-    new_msg.is_mine = is_mine;
-
-    chat_messages[chat_message_count++] = new_msg;
+    return nullptr;
 }

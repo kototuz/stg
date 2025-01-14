@@ -3,14 +3,26 @@
 
 #include <string_view>
 
-#include <raylib.h>
-
-#define MAX_MSG_COUNT 128
+#define MESSAGES_CAPACITY 128
 
 namespace chat {
+    struct WStr {
+        wchar_t *data;
+        size_t len;
+        static WStr from(const char *cstr);
+    };
+
+    struct Msg {
+        std::int64_t id;
+        WStr text; // copied from the message
+        std::wstring_view author_name; // because we preload users
+        bool is_mine;
+    };
+
     void init();
     void render(float bottom_margin);
-    void push_msg(std::wstring_view text, std::wstring_view author_name, bool is_mine = false);
+    void push_msg(Msg msg);
+    Msg *find_msg(std::int64_t msg_id);
 }
 
 #endif

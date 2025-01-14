@@ -1,6 +1,7 @@
 #include <cassert>
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <cstdio>
 #include <map>
 #include <codecvt>
@@ -317,7 +318,7 @@ static std::int64_t to_int64_t(std::wstring_view text)
     return res * factor;
 }
 
-// HANDLERS //////////////////
+// HANDLER IMPLS //////////////////
 
 HANDLER_IMPL(updateAuthorizationState, auth_update)
 {
@@ -383,27 +384,27 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
 {
     if (update_new_msg->message_->chat_id_ != curr_chat_id) return;
 
+    chat::Msg new_msg = {};
+
+    // Get message text
     std::string text = "[NONE]";
     if (update_new_msg->message_->content_->get_id() == td_api::messageText::ID) {
         text = static_cast<td_api::messageText &>(*update_new_msg->message_->content_).text_->text_;
     }
+    new_msg.text = chat::WStr::from(text.c_str());
 
-    std::wstring_view sender_name;
-    std::wstring wstr = converter.from_bytes(text);
+    // Get message author name
     if (update_new_msg->message_->sender_id_->get_id() == td_api::messageSenderUser::ID) {
         auto id = static_cast<td_api::messageSenderUser &>(*update_new_msg->message_->sender_id_).user_id_;
-        sender_name = tgclient_get_username(id);
-
-        // If it is our message we push it as our message :)
-        if (user_id == id) {
-            chat::push_msg(wstr, sender_name, true);
-            return;
-        }
+        new_msg.author_name = tgclient_get_username(id);
+        if (user_id == id) new_msg.is_mine = true;
     } else {
-        sender_name = tgclient_get_chat_title(static_cast<td_api::messageSenderChat &>(*update_new_msg->message_->sender_id_).chat_id_);
+        new_msg.author_name = tgclient_get_chat_title(
+                static_cast<td_api::messageSenderChat &>(
+                    *update_new_msg->message_->sender_id_).chat_id_);
     }
 
-    chat::push_msg(wstr, sender_name);
+    chat::push_msg(new_msg);
 }
 
 HANDLER_IMPL(updateUser, update_user)
@@ -411,6 +412,8 @@ HANDLER_IMPL(updateUser, update_user)
     auto user_id = update_user->user_->id_;
     user_map.insert({user_id, converter.from_bytes(update_user->user_->first_name_)});
 }
+
+// CMD IMPLS //////////////////
 
 CMD_IMPL(c, args)
 {
@@ -425,7 +428,7 @@ CMD_IMPL(c, args)
         msg.push_back('\n');
     }
 
-    chat::push_msg(msg, L"System");
+    std::wcout << msg << "\n";
 }
 
 CMD_IMPL(l, args)
