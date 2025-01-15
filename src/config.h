@@ -19,6 +19,10 @@
 #define MSG_TEXT_MARGIN_LEFT_RIGHT 20.0f
 #define MSG_TEXT_PADDING           15.0f
 #define MSG_DISTANCE               10.0f
+#define MSG_SELECTED_COLOR         (Color){0x08, 0x08, 0x08, 0xff}
+#define MSG_REPLY_PADDING          5.0f
+#define MSG_REPLY_MARGIN           5.0f
+#define MSG_REPLY_BG_COLOR         (Color){0xff, 0xff, 0xff, 0x20}
 #define MY_MSG_COLOR               GREEN
 #define NOT_MY_MSG_COLOR           RED
 
@@ -55,8 +59,10 @@
 #   define KEYMAP_MOVE_BEGIN         (IsKeyDown(KEY_LEFT_CONTROL) && KEY(A))
 #   define KEYMAP_DELETE_WORD        (IsKeyDown(KEY_LEFT_CONTROL) && KEY(W))
 #   define KEYMAP_DELETE_LINE        (IsKeyDown(KEY_LEFT_CONTROL) && KEY(U))
-#   define KEYMAP_SEND_MESSAGE       (IsKeyDown(KEY_LEFT_CONTROL) && !IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_J))
+#   define KEYMAP_SEND_MESSAGE       (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_J))
 #   define KEYMAP_NEW_LINE           (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_J))
+#   define KEYMAP_SELECT_PREV        (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_P))
+#   define KEYMAP_SELECT_NEXT        (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyDown(KEY_LEFT_SHIFT) && IsKeyPressed(KEY_N))
 #else
 #   define KEYMAP_MOVE_FORWARD       (KEY(RIGHT))
 #   define KEYMAP_MOVE_BACKWARD      (KEY(LEFT))
@@ -69,8 +75,10 @@
 #   define KEYMAP_MOVE_BEGIN         (KEY(END))
 #   define KEYMAP_DELETE_WORD        (IsKeyDown(KEY_LEFT_CONTROL) && KEY(BACKSPACE))
 #   define KEYMAP_DELETE_LINE        (false)
-#   define KEYMAP_SEND_MESSAGE       (!IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_ENTER))
+#   define KEYMAP_SEND_MESSAGE       (IsKeyPressed(KEY_ENTER))
 #   define KEYMAP_NEW_LINE           (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_ENTER))
+#   define KEYMAP_SELECT_PREV        (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_UP))
+#   define KEYMAP_SELECT_NEXT        (IsKeyDown(KEY_LEFT_CONTROL) && IsKeyPressed(KEY_DOWN))
 #endif
 
 #endif

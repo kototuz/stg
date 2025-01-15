@@ -24,6 +24,8 @@
     H(updateNewChat) \
     H(updateNewMessage) \
     H(updateUser) \
+    H(updateMessageContent) \
+    H(updateMessageSendSucceeded) \
 
 #define COMMANDS \
     C(l)  /*logout*/ \
@@ -123,7 +125,9 @@ int main(int argc, char *argv[])
 
     while (!WindowShouldClose()) {
         ClearBackground(CHAT_BG_COLOR);
-        if (KEYMAP_MOVE_FORWARD)            ted::try_cursor_motion(ted::MOTION_FORWARD);
+        if      (KEYMAP_SELECT_PREV)        chat::select_prev_msg();
+        else if (KEYMAP_SELECT_NEXT)        chat::select_next_msg();
+        else if (KEYMAP_MOVE_FORWARD)       ted::try_cursor_motion(ted::MOTION_FORWARD);
         else if (KEYMAP_MOVE_BACKWARD)      ted::try_cursor_motion(ted::MOTION_BACKWARD);
         else if (KEYMAP_MOVE_FORWARD_WORD)  ted::try_cursor_motion(ted::MOTION_FORWARD_WORD);
         else if (KEYMAP_MOVE_BACKWARD_WORD) ted::try_cursor_motion(ted::MOTION_BACKWARD_WORD);
@@ -134,8 +138,8 @@ int main(int argc, char *argv[])
         else if (KEYMAP_DELETE_WORD)        ted::delete_word();
         else if (KEYMAP_DELETE_LINE)        ted::delete_line();
         else if (KEYMAP_DELETE)             ted::delete_symbols(1);
-        else if (KEYMAP_SEND_MESSAGE)       tgclient_send_msg();
         else if (KEYMAP_NEW_LINE)           ted::insert_symbol('\n');
+        else if (KEYMAP_SEND_MESSAGE)       tgclient_send_msg();
         else { // just insert char
             int symbol = GetCharPressed();
             if (symbol != 0) ted::insert_symbol(symbol);
@@ -241,7 +245,15 @@ static void tgclient_send_msg()
                 message_content->text_ = td_api::make_object<td_api::formattedText>();
                 message_content->text_->text_ = std::move(text_as_str);
                 send_message->input_message_content_ = std::move(message_content);
-                tgclient_silent_request(std::move(send_message));
+
+                chat::Msg *reply_to;
+                if ((reply_to = chat::get_selected_msg())) {
+                    send_message->reply_to_ =
+                        td_api::make_object<td_api::inputMessageReplyToMessage>(
+                                reply_to->id, nullptr);
+                }
+
+                auto res = tgclient_request<td_api::message>(std::move(send_message));
             }
             break;
 
@@ -257,6 +269,7 @@ static void tgclient_send_msg()
     }
 
     ted::clear();
+    chat::reset_selection();
 }
 
 static std::wstring_view tgclient_get_username(std::int64_t user_id)
@@ -384,7 +397,7 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
 {
     if (update_new_msg->message_->chat_id_ != curr_chat_id) return;
 
-    chat::Msg new_msg = {};
+    chat::Msg new_msg = { .id = update_new_msg->message_->id_ };
 
     // Get message text
     std::string text = "[NONE]";
@@ -392,6 +405,14 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
         text = static_cast<td_api::messageText &>(*update_new_msg->message_->content_).text_->text_;
     }
     new_msg.text = chat::WStr::from(text.c_str());
+
+    // Get reply if it exists
+    if (update_new_msg->message_->reply_to_ != nullptr &&
+        update_new_msg->message_->reply_to_->get_id() == td_api::messageReplyToMessage::ID) {
+        std::int64_t reply_to_id = static_cast<td_api::messageReplyToMessage&>(
+                *update_new_msg->message_->reply_to_).message_id_;
+        new_msg.reply_to = chat::find_msg(reply_to_id);
+    }
 
     // Get message author name
     if (update_new_msg->message_->sender_id_->get_id() == td_api::messageSenderUser::ID) {
@@ -411,6 +432,17 @@ HANDLER_IMPL(updateUser, update_user)
 {
     auto user_id = update_user->user_->id_;
     user_map.insert({user_id, converter.from_bytes(update_user->user_->first_name_)});
+}
+
+HANDLER_IMPL(updateMessageContent, content)
+{
+    if (content->chat_id_ != curr_chat_id) return;
+}
+
+HANDLER_IMPL(updateMessageSendSucceeded, suc)
+{
+    chat::Msg *old_msg = chat::find_msg(suc->old_message_id_);
+    if (old_msg != nullptr) old_msg->id = suc->message_->id_;
 }
 
 // CMD IMPLS //////////////////
