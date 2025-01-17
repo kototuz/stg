@@ -20,8 +20,8 @@
 #define MSG_TEXT_PADDING           15.0f
 #define MSG_DISTANCE               10.0f
 #define MSG_SELECTED_COLOR         (Color){0x08, 0x08, 0x08, 0xff}
-#define MSG_REPLY_PADDING          5.0f
-#define MSG_REPLY_MARGIN           5.0f
+#define MSG_REPLY_PADDING          10.0f
+#define MSG_REPLY_MARGIN           8.0f
 #define MSG_REPLY_BG_COLOR         (Color){0xff, 0xff, 0xff, 0x20}
 #define MY_MSG_COLOR               GREEN
 #define NOT_MY_MSG_COLOR           RED

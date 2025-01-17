@@ -14,6 +14,30 @@ static float get_glyph_width(Font font, wchar_t codepoint)
            font.glyphs[cp_idx].advanceX;
 }
 
+void common::draw_text_in_width(
+        Font font, int font_size,
+        Vector2 pos,
+        const wchar_t *text, size_t text_len,
+        Color color, float in_width)
+{
+    in_width -= 3*get_glyph_width(font, L'.'); // to reserve place for '...'
+
+    float width = 0;
+    for (size_t i = 0; i < text_len; i++) {
+        float glyph_width = get_glyph_width(font, text[i]);
+        if (width+glyph_width > in_width) {
+            DrawTextCodepoints(font, (const int*)text, i, pos, font_size, 0, color);
+            pos.x += width;
+            DrawTextCodepoints(font, (const int*)L"...", 3, pos, font_size, 0, color);
+            return;
+        }
+
+        width += glyph_width;
+    }
+
+    DrawTextCodepoints(font, (const int*)text, text_len, pos, font_size, 0, color);
+}
+
 void common::draw_lines(Font font, size_t font_size, Vector2 pos, common::Lines lines, Color color)
 {
     size_t begin_x = pos.x;

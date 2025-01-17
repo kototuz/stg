@@ -472,3 +472,6 @@ CMD_IMPL(sc, args)
 {
     curr_chat_id = to_int64_t(args.items[0]);
 }
+
+// TODO: Chat panel
+// TODO: Font management in the 'config.h'

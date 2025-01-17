@@ -64,6 +64,7 @@ void chat::render(float bottom_margin)
     common::Lines lines = {};
     Rectangle msg_rect = { .y = height - bottom_margin };
     for (int i = chat_message_count-1; i >= 0; i--) {
+        // Recalculate the message text
         lines.recalc(
                 chat_msg_text_font,
                 MSG_TEXT_FONT_SIZE,
@@ -75,91 +76,154 @@ void chat::render(float bottom_margin)
         msg_rect.height = lines.len*MSG_TEXT_FONT_SIZE;
         msg_rect.height += MSG_AUTHOR_NAME_FONT_SIZE; // reserve place for 'username'
         msg_rect.height += 2*MSG_TEXT_PADDING;
+
+        // Calculate width
+        msg_rect.width = lines.max_line_width(chat_msg_text_font);
+        float author_name_width = common::measure_wtext(
+                chat_msg_author_name_font,
+                &chat_messages[i].author_name[0],
+                chat_messages[i].author_name.length());
+        if (msg_rect.width < author_name_width)
+            msg_rect.width = author_name_width;
+
+        // NOTE: A reply consists of 'author_name' and one line of text
         if (chat_messages[i].reply_to != nullptr) {
-            msg_rect.height += 2*MSG_REPLY_MARGIN + 2*MSG_REPLY_PADDING + 2*MSG_TEXT_FONT_SIZE;
-        }
+            // Calculate height
+            msg_rect.height +=
+                2*(MSG_REPLY_MARGIN + MSG_REPLY_PADDING + MSG_TEXT_FONT_SIZE);
 
-        msg_rect.y -= MSG_DISTANCE + msg_rect.height;
-        if (msg_rect.y+msg_rect.height < 0) return;
-
-        { // Calculate width
-            msg_rect.width = lines.max_line_width(chat_msg_text_font);
-
-            int author_name_width = common::measure_wtext(
-                    chat_msg_author_name_font,
-                    &chat_messages[i].author_name[0],
-                    chat_messages[i].author_name.length());
-
-            if (msg_rect.width < author_name_width) msg_rect.width = author_name_width;
-
-            if (chat_messages[i].reply_to != nullptr) {
-                float reply_text_width = common::measure_wtext(
+            float reply_widget_width;
+            { // Calculate width
+                // Calculate the reply_to's text width
+                reply_widget_width = common::measure_wtext(
                         chat_msg_text_font,
                         chat_messages[i].reply_to->text.data,
                         chat_messages[i].reply_to->text.len);
 
-                if (reply_text_width+2*MSG_REPLY_PADDING > msg_rect.width) { 
-                    if (reply_text_width+2*MSG_REPLY_PADDING > max_msg_line_width) {
-                        msg_rect.width = max_msg_line_width;
-                    } else {
-                        msg_rect.width = reply_text_width + 2*MSG_REPLY_PADDING;
-                    }
+                // Calculate the reply_to's username width
+                float reply_username_width = common::measure_wtext(
+                        chat_msg_author_name_font,
+                        &chat_messages[i].reply_to->author_name[0],
+                        chat_messages[i].reply_to->author_name.length());
+
+                if (reply_username_width > reply_widget_width) {
+                    reply_widget_width = reply_username_width;
+                }
+
+                // Apply reply rectangle padding
+                reply_widget_width += 2*MSG_REPLY_PADDING;
+
+                // Set message rectangle width to max possible value
+                if (reply_widget_width > msg_rect.width) {
+                    msg_rect.width = reply_widget_width > max_msg_line_width ?
+                                     max_msg_line_width :
+                                     reply_widget_width;
                 }
             }
 
-            msg_rect.width += 2*MSG_TEXT_PADDING;
-        }
+            // Calculate position
+            msg_rect.width += 2*MSG_TEXT_PADDING; // Apply message padding
+            msg_rect.y -= MSG_DISTANCE + msg_rect.height;
+            if (chat_messages[i].is_mine) {
+                author_name_color = MY_MSG_COLOR;
+                msg_rect.x = width - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
+            } else {
+                author_name_color = NOT_MY_MSG_COLOR;
+                msg_rect.x = MSG_TEXT_MARGIN_LEFT_RIGHT;
+            }
 
-        // If it is an our message we align it to the right and change the author name color
-        if (chat_messages[i].is_mine) {
-            author_name_color = MY_MSG_COLOR;
-            msg_rect.x = width - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
-        } else {
-            author_name_color = NOT_MY_MSG_COLOR;
-            msg_rect.x = MSG_TEXT_MARGIN_LEFT_RIGHT;
-        }
+            // If the message is selected we show it
+            if (i == selected_msg_idx) {
+                DrawRectangle(0, msg_rect.y, width, msg_rect.height, MSG_SELECTED_COLOR);
+            }
 
-        // If the message is selected we show it
-        if (i == selected_msg_idx) {
-            DrawRectangle(0, msg_rect.y, width, msg_rect.height, MSG_SELECTED_COLOR);
-        }
-
-        // draw message background
-        DrawRectangleRounded(
-                msg_rect,
-                MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
-                MSG_BG_COLOR);
-
-        Vector2 pos = { msg_rect.x+MSG_TEXT_PADDING, msg_rect.y+MSG_TEXT_PADDING };
-
-        // draw username
-        DrawTextCodepoints(
-                chat_msg_author_name_font,
-                (const int *)&chat_messages[i].author_name[0],
-                chat_messages[i].author_name.length(),
-                pos, MSG_AUTHOR_NAME_FONT_SIZE, 0, author_name_color);
-
-        if (chat_messages[i].reply_to != nullptr) {
-            // Draw 'reply_to'
-            pos.y += MSG_TEXT_FONT_SIZE + MSG_REPLY_MARGIN;
+            // Draw message rectangle
             DrawRectangleRounded(
-                    (Rectangle){ pos.x, pos.y, msg_rect.width - 2*MSG_TEXT_PADDING, 2*MSG_REPLY_PADDING + 2*MSG_TEXT_FONT_SIZE },
+                    msg_rect,
+                    MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
+                    MSG_BG_COLOR);
+
+            Vector2 pos = { msg_rect.x+MSG_TEXT_PADDING, msg_rect.y+MSG_TEXT_PADDING };
+
+            // Draw username
+            DrawTextCodepoints(
+                    chat_msg_author_name_font,
+                    (const int *)&chat_messages[i].author_name[0],
+                    chat_messages[i].author_name.length(),
+                    pos, MSG_AUTHOR_NAME_FONT_SIZE, 0, author_name_color);
+
+            pos.y += MSG_TEXT_FONT_SIZE + MSG_REPLY_MARGIN;
+
+            // Draw reply rectangle
+            DrawRectangleRounded(
+                    (Rectangle){
+                        pos.x, pos.y,
+                        msg_rect.width - 2*MSG_TEXT_PADDING,
+                        2*MSG_REPLY_PADDING + MSG_AUTHOR_NAME_FONT_SIZE + MSG_TEXT_FONT_SIZE },
                     MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
                     MSG_REPLY_BG_COLOR);
-            DrawTextCodepoints(
-                    chat_msg_text_font,
-                    (const int *)chat_messages[i].reply_to->text.data,
-                    chat_messages[i].reply_to->text.len,
-                    (Vector2){ pos.x+MSG_REPLY_PADDING, pos.y+MSG_REPLY_PADDING },
-                    MSG_TEXT_FONT_SIZE, 0, RAYWHITE);
-            pos.y += MSG_TEXT_FONT_SIZE + 2*MSG_REPLY_PADDING + MSG_REPLY_MARGIN;
-        }
 
-        // draw message
-        pos.y += MSG_TEXT_FONT_SIZE;
-        common::draw_lines(
-                chat_msg_text_font, MSG_TEXT_FONT_SIZE,
-                pos, lines, MSG_FG_COLOR);
+            // Draw the reply_to's username
+            pos.x += MSG_REPLY_PADDING;
+            pos.y += MSG_REPLY_PADDING;
+            DrawTextCodepoints(
+                    chat_msg_author_name_font,
+                    (const int *)&chat_messages[i].reply_to->author_name[0],
+                    chat_messages[i].reply_to->author_name.length(),
+                    pos, MSG_AUTHOR_NAME_FONT_SIZE, 0, NOT_MY_MSG_COLOR);
+
+            // Draw reply_to's message text
+            pos.y += MSG_AUTHOR_NAME_FONT_SIZE;// + MSG_REPLY_PADDING;
+            common::draw_text_in_width(
+                    chat_msg_text_font, MSG_TEXT_FONT_SIZE, pos,
+                    chat_messages[i].reply_to->text.data,
+                    chat_messages[i].reply_to->text.len,
+                    MSG_FG_COLOR, max_msg_line_width-2*MSG_REPLY_PADDING);
+
+            // Draw message text
+            pos.y += MSG_AUTHOR_NAME_FONT_SIZE + MSG_REPLY_PADDING + MSG_REPLY_MARGIN;
+            pos.x -= MSG_REPLY_PADDING;
+            common::draw_lines(
+                    chat_msg_text_font, MSG_TEXT_FONT_SIZE,
+                    pos, lines, MSG_FG_COLOR);
+        } else {
+            // Calculate position
+            msg_rect.width += 2*MSG_TEXT_PADDING; // Apply message padding
+            msg_rect.y -= MSG_DISTANCE + msg_rect.height;
+            if (chat_messages[i].is_mine) {
+                author_name_color = MY_MSG_COLOR;
+                msg_rect.x = width - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
+            } else {
+                author_name_color = NOT_MY_MSG_COLOR;
+                msg_rect.x = MSG_TEXT_MARGIN_LEFT_RIGHT;
+            }
+
+            // If the message is selected we show it
+            if (i == selected_msg_idx) {
+                DrawRectangle(0, msg_rect.y, width, msg_rect.height, MSG_SELECTED_COLOR);
+            }
+
+            // Draw message rectangle
+            DrawRectangleRounded(
+                    msg_rect,
+                    MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
+                    MSG_BG_COLOR);
+
+            Vector2 pos = { msg_rect.x+MSG_TEXT_PADDING, msg_rect.y+MSG_TEXT_PADDING };
+
+            // Draw username
+            DrawTextCodepoints(
+                    chat_msg_author_name_font,
+                    (const int *)&chat_messages[i].author_name[0],
+                    chat_messages[i].author_name.length(),
+                    pos, MSG_AUTHOR_NAME_FONT_SIZE, 0, author_name_color);
+
+            // Draw message text
+            pos.y += MSG_TEXT_FONT_SIZE;
+            common::draw_lines(
+                    chat_msg_text_font, MSG_TEXT_FONT_SIZE,
+                    pos, lines, MSG_FG_COLOR);
+        }
     }
 }
 
