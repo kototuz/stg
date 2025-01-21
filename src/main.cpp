@@ -82,7 +82,6 @@ static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 static std::int64_t                                     user_id;
 static std::map<std::int64_t, std::wstring>             user_map;
 static Handler                                          request_answer_handlers[REQUEST_ANSWER_HANDLERS_CAPACITY];
-static size_t                                           request_answer_handler_count = 0;
 
 static std::map<std::int64_t, void*> update_handler_map = {
 #define H(type) { td_api::type::ID, (void *) type##_handler },
@@ -107,6 +106,7 @@ template<typename T> static void tgclient_request(td_api::object_ptr<td_api::Fun
 #define tgclient_silent_request(req) manager.send(client_id, SILENT_REQUEST_ID, req)
 
 // Util functions
+static chat::Msg tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg);
 static std::vector<std::wstring_view> split(std::wstring_view src);
 static std::int64_t to_int64_t(std::wstring_view text);
 
@@ -205,14 +205,10 @@ static void tgclient_update()
 
     default: // Other requests
         size_t handler_idx = resp.request_id-2;
-        assert(handler_idx < request_answer_handler_count);
+        assert(handler_idx < REQUEST_ANSWER_HANDLERS_CAPACITY);
+        assert(request_answer_handlers[handler_idx]);
         request_answer_handlers[handler_idx](std::move(resp.object));
-
-        // Remove handler
-        memmove(&request_answer_handlers[handler_idx],
-                &request_answer_handlers[handler_idx+1],
-                (request_answer_handler_count - handler_idx) * sizeof(Handler));
-        request_answer_handler_count -= 1;
+        request_answer_handlers[handler_idx] = nullptr;
     }
 }
 
@@ -340,12 +336,57 @@ static td_api::object_ptr<T> tgclient_request(td_api::object_ptr<td_api::Functio
     /*}*/
 }
 
+static chat::Msg tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg)
+{
+    chat::Msg new_msg = {};
+    new_msg.id = tg_msg->id_;
+
+    std::wcout << "Get message " << tg_msg->id_ << "\n";
+
+    // Get message text
+    std::string text = "[NONE]";
+    if (tg_msg->content_->get_id() == td_api::messageText::ID) {
+        text = static_cast<td_api::messageText &>(*tg_msg->content_).text_->text_;
+    }
+    new_msg.text = chat::WStr::from(text.c_str());
+
+    // Get reply if it exists
+    if (tg_msg->reply_to_ != nullptr &&
+        tg_msg->reply_to_->get_id() == td_api::messageReplyToMessage::ID) {
+        std::int64_t reply_to_id = static_cast<td_api::messageReplyToMessage&>(
+                *tg_msg->reply_to_).message_id_;
+        new_msg.reply_to = chat::find_msg(reply_to_id);
+        if (new_msg.reply_to == nullptr) {
+            std::wcout << "Could not reply to " << reply_to_id << ": not loaded\n";
+        }
+    }
+
+    // Get message author name
+    if (tg_msg->sender_id_->get_id() == td_api::messageSenderUser::ID) {
+        auto id = static_cast<td_api::messageSenderUser &>(*tg_msg->sender_id_).user_id_;
+        new_msg.author_name = tgclient_get_username(id);
+        if (user_id == id) new_msg.is_mine = true;
+    } else {
+        new_msg.author_name = tgclient_get_chat_title(
+                static_cast<td_api::messageSenderChat &>(
+                    *tg_msg->sender_id_).chat_id_);
+    }
+
+    return new_msg;
+}
+
 template<typename T>
 static void tgclient_request(td_api::object_ptr<td_api::Function> req, void (*f)(td_api::object_ptr<T>))
 {
-    assert(request_answer_handler_count+1 < REQUEST_ANSWER_HANDLERS_CAPACITY);
-    request_answer_handlers[request_answer_handler_count] = (Handler) ((void *)f); // Thank you C
-    manager.send(client_id, request_answer_handler_count++ + 2, std::move(req));
+    for (size_t i = 0; i < REQUEST_ANSWER_HANDLERS_CAPACITY; i++) {
+        if (request_answer_handlers[i] == nullptr) {
+            request_answer_handlers[i] = (Handler) ((void *)f); // Thank you C
+            manager.send(client_id, i + 2, std::move(req));
+            return;
+        }
+    }
+
+    ted::set_placeholder(L"Miss request: handler buffer is overflowed");
 }
 
 static std::int64_t to_int64_t(std::wstring_view text)
@@ -426,37 +467,7 @@ HANDLER_IMPL(updateNewChat, update_new_chat)
 HANDLER_IMPL(updateNewMessage, update_new_msg)
 {
     if (update_new_msg->message_->chat_id_ != curr_chat_id) return;
-
-    chat::Msg new_msg = {};
-    new_msg.id = update_new_msg->message_->id_;
-
-    // Get message text
-    std::string text = "[NONE]";
-    if (update_new_msg->message_->content_->get_id() == td_api::messageText::ID) {
-        text = static_cast<td_api::messageText &>(*update_new_msg->message_->content_).text_->text_;
-    }
-    new_msg.text = chat::WStr::from(text.c_str());
-
-    // Get reply if it exists
-    if (update_new_msg->message_->reply_to_ != nullptr &&
-        update_new_msg->message_->reply_to_->get_id() == td_api::messageReplyToMessage::ID) {
-        std::int64_t reply_to_id = static_cast<td_api::messageReplyToMessage&>(
-                *update_new_msg->message_->reply_to_).message_id_;
-        new_msg.reply_to = chat::find_msg(reply_to_id);
-    }
-
-    // Get message author name
-    if (update_new_msg->message_->sender_id_->get_id() == td_api::messageSenderUser::ID) {
-        auto id = static_cast<td_api::messageSenderUser &>(*update_new_msg->message_->sender_id_).user_id_;
-        new_msg.author_name = tgclient_get_username(id);
-        if (user_id == id) new_msg.is_mine = true;
-    } else {
-        new_msg.author_name = tgclient_get_chat_title(
-                static_cast<td_api::messageSenderChat &>(
-                    *update_new_msg->message_->sender_id_).chat_id_);
-    }
-
-    chat::push_msg(new_msg);
+    chat::push_msg(tg_msg_to_chat_msg(std::move(update_new_msg->message_)));
 }
 
 HANDLER_IMPL(updateUser, update_user)
@@ -473,6 +484,7 @@ HANDLER_IMPL(updateMessageContent, content)
 HANDLER_IMPL(updateMessageSendSucceeded, suc)
 {
     chat::Msg *old_msg = chat::find_msg(suc->old_message_id_);
+    std::wcout << old_msg->id << " -> " << suc->message_->id_ << "\n";
     if (old_msg != nullptr) old_msg->id = suc->message_->id_;
 }
 
@@ -502,9 +514,29 @@ CMD_IMPL(l, args)
     tgclient_silent_request(td_api::make_object<td_api::logOut>());
 }
 
+static void handle_msgs(td_api::object_ptr<td_api::messages> msgs)
+{
+    if (msgs->total_count_ != 10) {
+        tgclient_request(
+                td_api::make_object<td_api::getChatHistory>(
+                    curr_chat_id, 0, 0, 10, false), handle_msgs);
+        return;
+    }
+
+    for (auto &msg : msgs->messages_) {
+        chat::push_msg(tg_msg_to_chat_msg(std::move(msg)));
+    }
+}
+
 CMD_IMPL(sc, args)
 {
     curr_chat_id = to_int64_t(args.items[0]);
+    tgclient_silent_request(td_api::make_object<td_api::openChat>(curr_chat_id));
+
+    // TODO: replies
+    tgclient_request(
+        td_api::make_object<td_api::getChatHistory>(
+            curr_chat_id, 0, -10, 10, false), handle_msgs);
 }
 
 // TODO: Chat panel
