@@ -78,7 +78,7 @@ void common::Lines::grow_one()
     }
 
     memcpy(new_buf, this->items, this->len * sizeof(Line));
-    new_buf[this->len] = (Line){0};
+    new_buf[this->len] = {};
 
     this->cap += 1;
     this->len += 1;
@@ -88,7 +88,7 @@ void common::Lines::grow_one()
 
 Vector2 common::Lines::get_vec_to_pos(Font font, int font_size, size_t row, size_t col)
 {
-    Vector2 ret = { .y = (float) row*font_size };
+    Vector2 ret = { 0, (float) row*font_size };
     Line line = this->items[row];
     for (size_t i = 0; i < col; i++) {
         ret.x += get_glyph_width(font, line.text[i]);
@@ -97,7 +97,7 @@ Vector2 common::Lines::get_vec_to_pos(Font font, int font_size, size_t row, size
     return ret;
 }
 
-void common::Lines::recalc(Font font, int font_size, wchar_t *text, size_t text_len, float max_line_width)
+void common::Lines::recalc(Font font, wchar_t *text, size_t text_len, float max_line_width)
 {
     // clear all lines
     this->len = 0;

@@ -40,6 +40,7 @@ class TlObject {
    * \param[in] s Storer to which the object will be appended.
    */
   virtual void store(TlStorerUnsafe &s) const {
+      (void) s;
   }
 
   /**
@@ -47,6 +48,7 @@ class TlObject {
    * \param[in] s Storer to which the object will be appended.
    */
   virtual void store(TlStorerCalcLength &s) const {
+      (void) s;
   }
 
   /**

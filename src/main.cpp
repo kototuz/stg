@@ -81,8 +81,8 @@ static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
 static std::int64_t                                     user_id;
 static std::map<std::int64_t, std::wstring>             user_map;
 
-static std::map<std::int64_t, Handler> update_handler_map = {
-#define H(type) { td_api::type::ID, (Handler) type##_handler },
+static std::map<std::int64_t, void*> update_handler_map = {
+#define H(type) { td_api::type::ID, (void *) type##_handler },
     UPDATE_HANDLERS
 #undef H
 };
@@ -96,7 +96,7 @@ static std::map<std::wstring_view, Command> command_map = {
 static void tgclient_init(const char *api_id, const char *api_hash);
 static void tgclient_update();
 static void tgclient_send_msg();
-static void tgclient_process_update();
+static void tgclient_process_update(td_api::object_ptr<td_api::Object> obj);
 static std::wstring_view tgclient_get_username(std::int64_t user_id);
 static std::wstring_view tgclient_get_chat_title(std::int64_t chat_id);
 template<typename T> static td_api::object_ptr<T> tgclient_request(td_api::object_ptr<td_api::Function> req);
@@ -162,7 +162,7 @@ static void tgclient_process_update(td_api::object_ptr<td_api::Object> obj)
         /*fprintf(stderr, "[!] Handler not found for:\n");*/
         /*std::cout << td_api::to_string(obj) << "\n";*/
     } else {
-        handler->second(std::move(obj));
+        ((Handler)handler->second)(std::move(obj));
     }
 }
 
@@ -235,7 +235,7 @@ static void tgclient_send_msg()
                     ted::set_placeholder(L"Command not found");
                     break;
                 }
-                res->second(Args{ .items = &args[1], .count = args.size()-1 });
+                res->second(Args{ &args[1], args.size()-1 });
             } else if (curr_chat_id == 0) {
                 ted::set_placeholder(L"Chat is not selected");
             } else {
@@ -340,6 +340,7 @@ HANDLER_IMPL(updateAuthorizationState, auth_update)
 
 HANDLER_IMPL(authorizationStateWaitTdlibParameters, wait_params)
 {
+    (void) wait_params;
     auto params = td_api::make_object<td_api::setTdlibParameters>();
     params->use_test_dc_ = false;
     params->database_directory_ = "data";
@@ -359,6 +360,7 @@ HANDLER_IMPL(authorizationStateWaitTdlibParameters, wait_params)
 
 HANDLER_IMPL(authorizationStateReady, update)
 {
+    (void) update;
     ted::set_placeholder(L"authorized");
 
     // Get user id
@@ -369,21 +371,14 @@ HANDLER_IMPL(authorizationStateReady, update)
 
 HANDLER_IMPL(authorizationStateWaitPhoneNumber, auth_state)
 {
+    (void) auth_state;
     ted::set_placeholder(L"phone number");
     state = State::WAIT_PHONE_NUMBER;
 }
 
-HANDLER_IMPL(Object, answer)
-{
-    if (answer->get_id() == td_api::error::ID) {
-        auto err = td_api::move_object_as<td_api::error>(answer);
-        std::wstring msg_as_wstr = std::wstring(err->message_.begin(), err->message_.end());
-        ted::set_placeholder(msg_as_wstr.c_str());
-    }
-}
-
 HANDLER_IMPL(authorizationStateWaitCode, auth_state)
 {
+    (void) auth_state;
     ted::set_placeholder(L"code");
     state = State::WAIT_CODE;
 }
@@ -397,7 +392,8 @@ HANDLER_IMPL(updateNewMessage, update_new_msg)
 {
     if (update_new_msg->message_->chat_id_ != curr_chat_id) return;
 
-    chat::Msg new_msg = { .id = update_new_msg->message_->id_ };
+    chat::Msg new_msg = {};
+    new_msg.id = update_new_msg->message_->id_;
 
     // Get message text
     std::string text = "[NONE]";
@@ -449,6 +445,7 @@ HANDLER_IMPL(updateMessageSendSucceeded, suc)
 
 CMD_IMPL(c, args)
 {
+    (void) args;
     auto c = tgclient_request<td_api::chats>(
             td_api::make_object<td_api::getChats>(nullptr, 10));
 
@@ -465,6 +462,7 @@ CMD_IMPL(c, args)
 
 CMD_IMPL(l, args)
 {
+    (void) args;
     tgclient_silent_request(td_api::make_object<td_api::logOut>());
 }
 

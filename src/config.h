@@ -6,23 +6,23 @@
 
 #define FONT_GLYPH_COUNT 30000
 
-#define CHAT_BG_COLOR (Color){0x0f,0x0f,0x0f,0xff}
+const Color CHAT_BG_COLOR = {0x0f,0x0f,0x0f,0xff};
 
 #define MSG_AUTHOR_NAME_FONT_PATH  "resources/Roboto-Regular.ttf"
 #define MSG_AUTHOR_NAME_FONT_SIZE  28.0f
 #define MSG_TEXT_FONT_PATH         "resources/Roboto-Regular.ttf"
 #define MSG_TEXT_FONT_SIZE         30.0f
-#define MSG_BG_COLOR               (Color){0x21,0x21,0x21,0xff}
+const Color MSG_BG_COLOR          = {0x21,0x21,0x21,0xff};
 #define MSG_FG_COLOR               WHITE
 #define MSG_REC_ROUNDNESS          40
 #define MSG_REC_SEGMENT_COUNT      40
 #define MSG_TEXT_MARGIN_LEFT_RIGHT 20.0f
 #define MSG_TEXT_PADDING           15.0f
 #define MSG_DISTANCE               10.0f
-#define MSG_SELECTED_COLOR         (Color){0x08, 0x08, 0x08, 0xff}
+const Color MSG_SELECTED_COLOR      = {0x08, 0x08, 0x08, 0xff};
 #define MSG_REPLY_PADDING          10.0f
 #define MSG_REPLY_MARGIN           8.0f
-#define MSG_REPLY_BG_COLOR         (Color){0xff, 0xff, 0xff, 0x20}
+const Color MSG_REPLY_BG_COLOR      = {0xff, 0xff, 0xff, 0x20};
 #define MY_MSG_COLOR               GREEN
 #define NOT_MY_MSG_COLOR           RED
 
@@ -32,7 +32,7 @@
 #define TED_FG_COLOR          WHITE
 #define TED_CURSOR_CODE       L'█'
 #define TED_CURSOR_COLOR      WHITE
-#define TED_PLACEHOLDER_COLOR Color{0x40, 0x40, 0x40, 0xff}
+const Color TED_PLACEHOLDER_COLOR = {0x40, 0x40, 0x40, 0xff};
 #define TED_PADDING           15.0f
 #define TED_MARGIN            20.0f
 #define TED_REC_ROUNDNESS     40

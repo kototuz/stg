@@ -19,7 +19,7 @@ struct Lines {
 
     void grow_one();
     float max_line_width(Font font);
-    void recalc(Font font, int font_size, wchar_t *text, size_t text_len, float max_line_width);
+    void recalc(Font font, wchar_t *text, size_t text_len, float max_line_width);
     Vector2 get_vec_to_pos(Font font, int font_size, size_t row, size_t col);
 };
 

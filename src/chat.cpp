@@ -58,16 +58,15 @@ void chat::render(float bottom_margin)
     float max_msg_line_width =
         floor(width - 2*MSG_TEXT_PADDING - 2*MSG_TEXT_MARGIN_LEFT_RIGHT);
 
-    size_t selected_msg_idx = chat_message_count - chat_selection_offset;
+    int selected_msg_idx = chat_message_count - chat_selection_offset;
 
     Color author_name_color;
     common::Lines lines = {};
-    Rectangle msg_rect = { .y = height - bottom_margin };
+    Rectangle msg_rect = { 0, height - bottom_margin, 0, 0 };
     for (int i = chat_message_count-1; i >= 0; i--) {
         // Recalculate the message text
         lines.recalc(
                 chat_msg_text_font,
-                MSG_TEXT_FONT_SIZE,
                 chat_messages[i].text.data,
                 chat_messages[i].text.len,
                 max_msg_line_width);
@@ -156,7 +155,7 @@ void chat::render(float bottom_margin)
 
             // Draw reply rectangle
             DrawRectangleRounded(
-                    (Rectangle){
+                    Rectangle{
                         pos.x, pos.y,
                         msg_rect.width - 2*MSG_TEXT_PADDING,
                         2*MSG_REPLY_PADDING + MSG_AUTHOR_NAME_FONT_SIZE + MSG_TEXT_FONT_SIZE },

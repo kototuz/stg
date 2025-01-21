@@ -201,7 +201,7 @@ void ted::insert_symbol(int s)
     *text_curr_ptr = s;
     ted_buffer_len += 1;
 
-    ted_lines.recalc(ted_font, TED_FONT_SIZE, ted_buffer, ted_buffer_len, ted_max_line_width);
+    ted_lines.recalc(ted_font, ted_buffer, ted_buffer_len, ted_max_line_width);
     move_cursor_to_ptr(text_curr_ptr+1);
 }
 
@@ -218,7 +218,7 @@ void ted::delete_symbols(size_t count)
     memmove(new_curr_text_ptr, text_curr_ptr, size);
     ted_buffer_len -= text_curr_ptr - new_curr_text_ptr;
 
-    ted_lines.recalc(ted_font, TED_FONT_SIZE, ted_buffer, ted_buffer_len, ted_max_line_width);
+    ted_lines.recalc(ted_font, ted_buffer, ted_buffer_len, ted_max_line_width);
     move_cursor_to_ptr(new_curr_text_ptr);
 }
 
