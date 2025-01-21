@@ -253,6 +253,9 @@ static void tgclient_send_msg()
                                 reply_to->id, nullptr);
                 }
 
+                // Update chat selection
+                chat::select_next_msg();
+
                 auto res = tgclient_request<td_api::message>(std::move(send_message));
             }
             break;
