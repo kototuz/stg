@@ -79,18 +79,15 @@ void ted::clear()
 
 void ted::render()
 {
-    float width = GetScreenWidth();
-    float height = GetScreenHeight();
-
     // Calculate max line
-    ted_max_line_width = floor(width - 2*TED_MARGIN - 2*TED_PADDING);
+    ted_max_line_width = floor(CHAT_VIEW_WIDTH - 2*TED_MARGIN - 2*TED_PADDING);
 
     // Render text editor rectangle
     Rectangle ted_rec = {};
-    ted_rec.width = width - 2*TED_MARGIN;
+    ted_rec.width = CHAT_VIEW_WIDTH - 2*TED_MARGIN;
     ted_rec.height = ted_lines.len*TED_FONT_SIZE + 2*TED_PADDING;
-    ted_rec.x = TED_MARGIN;
-    ted_rec.y = height - ted_rec.height - TED_MARGIN;
+    ted_rec.x = common::get_chat_view_x() + TED_MARGIN;
+    ted_rec.y = GetScreenHeight() - ted_rec.height - TED_MARGIN;
     DrawRectangleRounded(ted_rec, TED_REC_ROUNDNESS/ted_rec.height, TED_REC_SEGMENT_COUNT, TED_BG_COLOR);
 
     // Render placeholder or text if it exists
@@ -107,7 +104,7 @@ void ted::render()
 
     // Render cursor
     Vector2 vec_to_pos = ted_lines.get_vec_to_pos(ted_font, TED_FONT_SIZE, ted_cursor_pos.row, ted_cursor_pos.col);
-    pos.x = TED_MARGIN + TED_PADDING + vec_to_pos.x;
+    pos.x += vec_to_pos.x;
     pos.y += vec_to_pos.y;
     DrawLine(pos.x, pos.y, pos.x, pos.y+TED_FONT_SIZE, TED_CURSOR_COLOR);
 }

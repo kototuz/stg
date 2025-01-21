@@ -52,11 +52,10 @@ void chat::init()
 void chat::render(float bottom_margin)
 {
     float height = GetScreenHeight();
-    float width  = GetScreenWidth();
 
     // Calculate max line width
     float max_msg_line_width =
-        floor(width - 2*MSG_TEXT_PADDING - 2*MSG_TEXT_MARGIN_LEFT_RIGHT);
+        floor(CHAT_VIEW_WIDTH - 2*MSG_TEXT_PADDING - 2*MSG_TEXT_MARGIN_LEFT_RIGHT);
 
     int selected_msg_idx = chat_message_count - chat_selection_offset;
 
@@ -125,15 +124,15 @@ void chat::render(float bottom_margin)
             msg_rect.y -= MSG_DISTANCE + msg_rect.height;
             if (chat_messages[i].is_mine) {
                 author_name_color = MY_MSG_COLOR;
-                msg_rect.x = width - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
+                msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
             } else {
                 author_name_color = NOT_MY_MSG_COLOR;
-                msg_rect.x = MSG_TEXT_MARGIN_LEFT_RIGHT;
+                msg_rect.x = common::get_chat_view_x();
             }
 
             // If the message is selected we show it
             if (i == selected_msg_idx) {
-                DrawRectangle(0, msg_rect.y, width, msg_rect.height, MSG_SELECTED_COLOR);
+                DrawRectangle(0, msg_rect.y, GetScreenWidth(), msg_rect.height, MSG_SELECTED_COLOR);
             }
 
             // Draw message rectangle
@@ -191,15 +190,15 @@ void chat::render(float bottom_margin)
             msg_rect.y -= MSG_DISTANCE + msg_rect.height;
             if (chat_messages[i].is_mine) {
                 author_name_color = MY_MSG_COLOR;
-                msg_rect.x = width - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
+                msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
             } else {
                 author_name_color = NOT_MY_MSG_COLOR;
-                msg_rect.x = MSG_TEXT_MARGIN_LEFT_RIGHT;
+                msg_rect.x = common::get_chat_view_x();
             }
 
             // If the message is selected we show it
             if (i == selected_msg_idx) {
-                DrawRectangle(0, msg_rect.y, width, msg_rect.height, MSG_SELECTED_COLOR);
+                DrawRectangle(0, msg_rect.y, GetScreenWidth(), msg_rect.height, MSG_SELECTED_COLOR);
             }
 
             // Draw message rectangle

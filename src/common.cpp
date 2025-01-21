@@ -14,6 +14,11 @@ static float get_glyph_width(Font font, wchar_t codepoint)
            font.glyphs[cp_idx].advanceX;
 }
 
+float common::get_chat_view_x()
+{
+    return (GetScreenWidth()/2) - (CHAT_VIEW_WIDTH/2);
+}
+
 void common::draw_text_in_width(
         Font font, int font_size,
         Vector2 pos,
