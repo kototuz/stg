@@ -27,7 +27,6 @@ namespace chat {
     void select_prev_msg();
     void select_next_msg();
     Msg *get_selected_msg();
-    void reset_selection();
     Msg *get_msgs(size_t *count);
 }
 

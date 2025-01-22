@@ -227,6 +227,12 @@ void chat::render(float bottom_margin)
 
 void chat::push_msg(Msg msg)
 {
+    if (msg.is_mine) {
+        chat_selection_offset = 0;
+    } else if (chat_selection_offset != 0) {
+        chat_selection_offset += 1;
+    }
+
     if (chat_message_count >= MESSAGES_CAPACITY) {
         UnloadCodepoints((int*)chat_messages[0].text.data);
         memmove(&chat_messages[0], &chat_messages[1], (chat_message_count-1)*sizeof(chat::Msg));
@@ -266,11 +272,6 @@ chat::Msg *chat::get_selected_msg()
 {
     return chat_selection_offset == 0 ? nullptr :
            &chat_messages[chat_message_count - chat_selection_offset];
-}
-
-void chat::reset_selection()
-{
-    chat_selection_offset = 0;
 }
 
 chat::Msg *chat::get_msgs(size_t *count)

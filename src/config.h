@@ -17,7 +17,7 @@ const Color MSG_BG_COLOR          = {0x21,0x21,0x21,0xff};
 #define MSG_FG_COLOR               WHITE
 #define MSG_REC_ROUNDNESS          40
 #define MSG_REC_SEGMENT_COUNT      40
-#define MSG_TEXT_MARGIN_LEFT_RIGHT 0.0f
+#define MSG_TEXT_MARGIN_LEFT_RIGHT 20.0f
 #define MSG_TEXT_PADDING           15.0f
 #define MSG_DISTANCE               10.0f
 const Color MSG_SELECTED_COLOR      = {0x08, 0x08, 0x08, 0xff};

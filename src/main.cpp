@@ -259,9 +259,6 @@ static void tgclient_send_msg()
                                 reply_to->id, nullptr);
                 }
 
-                // Update chat selection
-                chat::select_next_msg();
-
                 tgclient_silent_request(std::move(send_message));
             }
             break;
@@ -278,7 +275,6 @@ static void tgclient_send_msg()
     }
 
     ted::clear();
-    chat::reset_selection();
 }
 
 static std::wstring_view tgclient_get_username(std::int64_t user_id)
