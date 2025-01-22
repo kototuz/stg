@@ -74,8 +74,6 @@ COMMANDS
 static td::ClientManager                                manager;
 static std::int32_t                                     client_id;
 static State                                            state;
-static const char                                       *global_api_id;
-static const char                                       *global_api_hash;
 static std::map<std::int64_t, std::wstring>             chat_title_map;
 static std::int64_t                                     curr_chat_id = 0;
 static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
@@ -95,7 +93,7 @@ static std::map<std::wstring_view, Command> command_map = {
 };
 
 
-static void tgclient_init(const char *api_id, const char *api_hash);
+static void tgclient_init();
 static void tgclient_update();
 static void tgclient_send_msg();
 static void tgclient_process_update(td_api::object_ptr<td_api::Object> obj);
@@ -110,13 +108,8 @@ static chat::Msg tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg);
 static std::vector<std::wstring_view> split(std::wstring_view src);
 static std::int64_t to_int64_t(std::wstring_view text);
 
-int main(int argc, char *argv[])
+int main()
 {
-    if (argc != 3) {
-        fprintf(stderr, "usage: %s <api_id> <api_hash>\n", argv[0]);
-        return 1;
-    }
-
     // Disable 'raylib' logging
     SetTraceLogLevel(LOG_NONE);
 
@@ -125,7 +118,7 @@ int main(int argc, char *argv[])
 
     ted::init();
     chat::init();
-    tgclient_init(argv[1], argv[2]);
+    tgclient_init();
 
     while (!WindowShouldClose()) {
         ClearBackground(CHAT_BG_COLOR);
@@ -170,7 +163,7 @@ static void tgclient_process_update(td_api::object_ptr<td_api::Object> obj)
     }
 }
 
-static void tgclient_init(const char *api_id, const char *api_hash)
+static void tgclient_init()
 {
     // Create new client
     td::ClientManager::execute(td_api::make_object<td_api::setLogVerbosityLevel>(1));
@@ -178,9 +171,6 @@ static void tgclient_init(const char *api_id, const char *api_hash)
 
     // Start connection
     tgclient_silent_request(td_api::make_object<td_api::getOption>("version"));
-
-    global_api_id = api_id;
-    global_api_hash = api_hash;
 
     state = State::NONE;
 }
@@ -421,8 +411,10 @@ HANDLER_IMPL(authorizationStateWaitTdlibParameters, wait_params)
     params->use_chat_info_database_ = true;
     params->use_message_database_ = true;
     params->use_secret_chats_ = false;
-    params->api_id_ = std::atoi(global_api_id);
-    params->api_hash_ = global_api_hash;
+    params->api_id_ = API_ID;
+#define stringify(x) #x
+    params->api_hash_ = stringify(API_HASH);
+#undef stringify
     params->system_language_code_ = "en";
     params->device_model_ = "Desktop";
     params->system_version_ = "Debian 12";

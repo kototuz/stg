@@ -1,5 +1,5 @@
 build
-private_run.sh
+private_build.sh
 data
 
 # Prerequisites
