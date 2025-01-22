@@ -38,6 +38,8 @@
 
 #define TG_CLIENT_WAIT_TIME 0.0
 
+#define MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT 16
+
 #define UPDATE_REQUEST_ID 0
 #define SILENT_REQUEST_ID 1
 
@@ -508,15 +510,16 @@ CMD_IMPL(l, args)
 
 static void handle_msgs(td_api::object_ptr<td_api::messages> msgs)
 {
-    if (msgs->total_count_ != 10) {
+    if (msgs->total_count_ != MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT) {
         tgclient_request(
-                td_api::make_object<td_api::getChatHistory>(
-                    curr_chat_id, 0, 0, 10, false), handle_msgs);
+            td_api::make_object<td_api::getChatHistory>(
+                curr_chat_id, 0, 0, MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT, false),
+            handle_msgs);
         return;
     }
 
-    for (auto &msg : msgs->messages_) {
-        chat::push_msg(tg_msg_to_chat_msg(std::move(msg)));
+    for (int i = MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT-1; i >= 0; i--) {
+        chat::push_msg(tg_msg_to_chat_msg(std::move(msgs->messages_[i])));
     }
 }
 
@@ -524,11 +527,10 @@ CMD_IMPL(sc, args)
 {
     curr_chat_id = to_int64_t(args.items[0]);
     tgclient_silent_request(td_api::make_object<td_api::openChat>(curr_chat_id));
-
-    // TODO: replies
     tgclient_request(
         td_api::make_object<td_api::getChatHistory>(
-            curr_chat_id, 0, -10, 10, false), handle_msgs);
+            curr_chat_id, 0, -10, MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT, false),
+        handle_msgs);
 }
 
 // TODO: Chat panel
