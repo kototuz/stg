@@ -7,13 +7,19 @@
 #define FONT_GLYPH_COUNT 30000
 
 #define CHAT_VIEW_WIDTH 950.0f
-const Color CHAT_BG_COLOR = {0x0f,0x0f,0x0f,0xff};
+const Color CHAT_BG_COLOR = {0x12, 0x12, 0x12, 0xff};
 
 #define MSG_AUTHOR_NAME_FONT_PATH  "resources/Roboto-Regular.ttf"
 #define MSG_AUTHOR_NAME_FONT_SIZE  28.0f
 #define MSG_TEXT_FONT_PATH         "resources/Roboto-Regular.ttf"
 #define MSG_TEXT_FONT_SIZE         30.0f
 const Color MSG_BG_COLOR          = {0x21,0x21,0x21,0xff};
+const Color MSG_MY_FG_COLOR       = WHITE;
+const Color MSG_OTHERS_FG_COLOR   = WHITE;
+const Color MSG_MY_BG_COLOR       = {0x35, 0x78, 0x94, 0xff};
+const Color MSG_OTHERS_BG_COLOR   = {0x26, 0x26, 0x26, 0xff};
+const Color MSG_MY_NAME_COLOR     = {0x26, 0xd9, 0x83, 0xff};
+const Color MSG_OTHERS_NAME_COLOR = {0xff, 0xa3, 0xf4, 0xff};
 #define MSG_FG_COLOR               WHITE
 #define MSG_REC_ROUNDNESS          40
 #define MSG_REC_SEGMENT_COUNT      40

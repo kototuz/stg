@@ -3,6 +3,8 @@
 
 #include <string_view>
 
+#include <raylib.h>
+
 #define MESSAGES_CAPACITY 128
 
 namespace chat {
@@ -18,6 +20,9 @@ namespace chat {
         std::wstring_view author_name; // because we preload users
         bool is_mine;
         Msg *reply_to;
+        Color bg_color;
+        Color fg_color;
+        Color author_name_color;
     };
 
     void init();

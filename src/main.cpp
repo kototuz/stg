@@ -79,7 +79,6 @@ static State                                            state;
 static std::map<std::int64_t, std::wstring>             chat_title_map;
 static std::int64_t                                     curr_chat_id = 0;
 static std::wstring_convert<std::codecvt_utf8<wchar_t>> converter;
-static std::int64_t                                     user_id;
 static std::map<std::int64_t, std::wstring>             user_map;
 static Handler                                          request_answer_handlers[REQUEST_ANSWER_HANDLERS_CAPACITY];
 
@@ -349,11 +348,22 @@ static chat::Msg tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg)
         }
     }
 
+    // Set color palette
+    if (tg_msg->is_outgoing_) {
+        new_msg.is_mine = true;
+        new_msg.bg_color = MSG_MY_BG_COLOR;
+        new_msg.fg_color = MSG_MY_FG_COLOR;
+        new_msg.author_name_color = MSG_MY_NAME_COLOR;
+    } else {
+        new_msg.fg_color = MSG_OTHERS_FG_COLOR;
+        new_msg.bg_color = MSG_OTHERS_BG_COLOR;
+        new_msg.author_name_color = MSG_OTHERS_NAME_COLOR;
+    }
+
     // Get message author name
     if (tg_msg->sender_id_->get_id() == td_api::messageSenderUser::ID) {
         auto id = static_cast<td_api::messageSenderUser &>(*tg_msg->sender_id_).user_id_;
         new_msg.author_name = tgclient_get_username(id);
-        if (user_id == id) new_msg.is_mine = true;
     } else {
         new_msg.author_name = tgclient_get_chat_title(
                 static_cast<td_api::messageSenderChat &>(
@@ -425,14 +435,7 @@ HANDLER_IMPL(authorizationStateReady, update)
 {
     (void) update;
     ted::set_placeholder(L"authorized");
-
-    // Get user id
-    tgclient_request(
-        td_api::make_object<td_api::getMe>(),
-        +[](td_api::object_ptr<td_api::user> me){
-            user_id = me->id_;
-            state = State::FREETIME;
-        });
+    state = State::FREETIME;
 }
 
 HANDLER_IMPL(authorizationStateWaitPhoneNumber, auth_state)
@@ -529,5 +532,7 @@ CMD_IMPL(sc, args)
         handle_msgs);
 }
 
+// TODO: Smile rendering
+// TODO: Chat scrolling
 // TODO: Chat panel
 // TODO: Font management in the 'config.h'
