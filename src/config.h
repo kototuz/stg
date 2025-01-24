@@ -7,7 +7,7 @@
 #define FONT_GLYPH_COUNT 30000
 
 #define CHAT_VIEW_WIDTH 950.0f
-const Color CHAT_BG_COLOR = {0x12, 0x12, 0x12, 0xff};
+#define CHAT_BG_COLOR   CLITERAL(Color){0x12, 0x12, 0x12, 0xff}
 
 #define MSG_AUTHOR_NAME_FONT_PATH  "resources/Roboto-Regular.ttf"
 #define MSG_AUTHOR_NAME_FONT_SIZE  28.0f
@@ -26,35 +26,26 @@ const struct {
     {{0x76, 0x6a, 0xc8, 0xff}, WHITE, {0x26, 0xd9, 0x83, 0xff}, {0xff, 0xff, 0xff, 0x1f}},
 };
 
-#define MSG_FG_COLOR               WHITE
 #define MSG_REC_ROUNDNESS          40
 #define MSG_REC_SEGMENT_COUNT      40
 #define MSG_TEXT_MARGIN_LEFT_RIGHT 20.0f
 #define MSG_TEXT_PADDING           15.0f
 #define MSG_DISTANCE               10.0f
-const Color MSG_SELECTED_COLOR      = {0x08, 0x08, 0x08, 0xff};
+#define MSG_SELECTED_COLOR         CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
 #define MSG_REPLY_PADDING          10.0f
 #define MSG_REPLY_MARGIN           8.0f
-const Color MSG_REPLY_BG_COLOR      = {0xff, 0xff, 0xff, 0x20};
-#define MY_MSG_COLOR               GREEN
-#define NOT_MY_MSG_COLOR           RED
 
 #define TED_FONT_PATH         "resources/Roboto-Regular.ttf"
 #define TED_FONT_SIZE         30.0f
-const Color TED_BG_COLOR          = {0x21, 0x21, 0x21, 0xff};
+#define TED_BG_COLOR          CLITERAL(Color){0x21, 0x21, 0x21, 0xff}
 #define TED_FG_COLOR          WHITE
-#define TED_CURSOR_CODE       L'█'
 #define TED_CURSOR_COLOR      WHITE
-const Color TED_PLACEHOLDER_COLOR = {0x40, 0x40, 0x40, 0xff};
+#define TED_PLACEHOLDER_COLOR CLITERAL(Color){0x40, 0x40, 0x40, 0xff}
 #define TED_PADDING           15.0f
 #define TED_MARGIN            20.0f
 #define TED_REC_ROUNDNESS     40
 #define TED_REC_SEGMENT_COUNT 40
-
-#define MY_COLOR    GREEN
-#define THEIR_COLOR RED
-
-#define COMMAND_START_SYMBOL ':'
+#define COMMAND_START_SYMBOL  ':'
 
 #define EMACS_KEYMAP
 
