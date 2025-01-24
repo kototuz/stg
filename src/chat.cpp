@@ -45,6 +45,7 @@ static size_t chat_msg_text_font_glyph_width;
 static Msg    chat_messages[MESSAGES_CAPACITY];
 static size_t chat_message_count = 0;
 static size_t chat_selection_offset = 0;
+static float  chat_scroll = 0;
 static struct {
     Vector2 (*size_fn)  (chat::MsgData *msg_data, float max_widget_width);
     void    (*render_fn)(chat::MsgData *msg_data, Vector2 pos, float max_widget_width, float width);
@@ -84,7 +85,7 @@ void chat::init()
         chat_msg_text_font.glyphs[0].advanceX;
 }
 
-void chat::render(float bottom_margin)
+void chat::render(float bottom_margin, float mouse_wheel_move)
 {
     float height = GetScreenHeight();
 
@@ -95,7 +96,7 @@ void chat::render(float bottom_margin)
     int selected_msg_idx = chat_message_count - chat_selection_offset;
 
     float heights[WidgetType::COUNT];
-    Rectangle msg_rect = { MSG_TEXT_MARGIN_LEFT_RIGHT, height - bottom_margin, 0, 0 };
+    Rectangle msg_rect = { MSG_TEXT_MARGIN_LEFT_RIGHT, height + chat_scroll - bottom_margin, 0, 0 };
     for (int i = chat_message_count-1; i >= 0; i--) {
         WidgetType *widgets = chat_messages[i].widgets;
         size_t widget_count = chat_messages[i].widget_count;
@@ -143,6 +144,9 @@ void chat::render(float bottom_margin)
             pos.y += heights[j];
         }
     }
+
+    if (chat_scroll+mouse_wheel_move >= 0 && msg_rect.y+mouse_wheel_move <= MSG_DISTANCE)
+        chat_scroll += mouse_wheel_move;
 }
 
 void chat::push_msg(MsgData msg_data)

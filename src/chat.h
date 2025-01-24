@@ -23,7 +23,7 @@ namespace chat {
     };
 
     void init();
-    void render(float bottom_margin);
+    void render(float bottom_margin, float mouse_wheel_move);
     void push_msg(MsgData msg);
     MsgData *find_msg(std::int64_t msg_id);
     void select_prev_msg();

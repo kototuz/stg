@@ -6,13 +6,9 @@
 
 #define FONT_GLYPH_COUNT 30000
 
-#define CHAT_VIEW_WIDTH 950.0f
-#define CHAT_BG_COLOR   CLITERAL(Color){0x12, 0x12, 0x12, 0xff}
-
-#define MSG_AUTHOR_NAME_FONT_PATH  "resources/Roboto-Regular.ttf"
-#define MSG_AUTHOR_NAME_FONT_SIZE  28.0f
-#define MSG_TEXT_FONT_PATH         "resources/Roboto-Regular.ttf"
-#define MSG_TEXT_FONT_SIZE         30.0f
+#define CHAT_VIEW_WIDTH   950.0f
+#define CHAT_BG_COLOR     CLITERAL(Color){0x12, 0x12, 0x12, 0xff}
+#define CHAT_SCROLL_SPEED 100.0f
 
 // 0 element is the palette for other messages
 // 1 element is the palette for my messages
@@ -26,6 +22,10 @@ const struct {
     {{0x76, 0x6a, 0xc8, 0xff}, WHITE, {0x26, 0xd9, 0x83, 0xff}, {0xff, 0xff, 0xff, 0x1f}},
 };
 
+#define MSG_AUTHOR_NAME_FONT_PATH  "resources/Roboto-Regular.ttf"
+#define MSG_AUTHOR_NAME_FONT_SIZE  28.0f
+#define MSG_TEXT_FONT_PATH         "resources/Roboto-Regular.ttf"
+#define MSG_TEXT_FONT_SIZE         30.0f
 #define MSG_REC_ROUNDNESS          40
 #define MSG_REC_SEGMENT_COUNT      40
 #define MSG_TEXT_MARGIN_LEFT_RIGHT 20.0f

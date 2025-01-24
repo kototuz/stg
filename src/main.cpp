@@ -38,7 +38,7 @@
 
 #define TG_CLIENT_WAIT_TIME 0.0
 
-#define MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT 16
+#define MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT 32
 
 #define UPDATE_REQUEST_ID 0
 #define SILENT_REQUEST_ID 1
@@ -146,8 +146,8 @@ int main()
         tgclient_update();
 
         BeginDrawing();
+            chat::render(ted::get_height(), GetMouseWheelMove()*CHAT_SCROLL_SPEED);
             ted::render();
-            chat::render(ted::get_height());
         EndDrawing();
     }
     CloseWindow();
@@ -523,6 +523,5 @@ CMD_IMPL(sc, args)
 }
 
 // TODO: Smile rendering
-// TODO: Chat scrolling
 // TODO: Chat panel
 // TODO: Font management in the 'config.h'
