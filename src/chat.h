@@ -14,25 +14,21 @@ namespace chat {
         static WStr from(const char *cstr);
     };
 
-    struct Msg {
+    struct MsgData {
         std::int64_t id;
-        WStr text; // copied from the message
-        std::wstring_view author_name; // because we preload users
+        WStr text;
+        std::wstring_view sender_name;
         bool is_mine;
-        Msg *reply_to;
-        Color bg_color;
-        Color fg_color;
-        Color author_name_color;
+        MsgData *reply_to;
     };
 
     void init();
     void render(float bottom_margin);
-    void push_msg(Msg msg);
-    Msg *find_msg(std::int64_t msg_id);
+    void push_msg(MsgData msg);
+    MsgData *find_msg(std::int64_t msg_id);
     void select_prev_msg();
     void select_next_msg();
-    Msg *get_selected_msg();
-    Msg *get_msgs(size_t *count);
+    MsgData *get_selected_msg();
 }
 
 #endif

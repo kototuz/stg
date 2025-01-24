@@ -3,6 +3,7 @@
 #include <cassert>
 #include <cstring>
 #include <cstdio>
+#include <iostream>
 
 #include <raylib.h>
 
@@ -11,13 +12,47 @@
 #include "ted.h"
 #include "config.h"
 
-static Font      chat_msg_author_name_font;
-static size_t    chat_msg_author_name_font_glyph_width;
-static Font      chat_msg_text_font;
-static size_t    chat_msg_text_font_glyph_width;
-static chat::Msg chat_messages[MESSAGES_CAPACITY];
-static size_t    chat_message_count = 0;
-static size_t    chat_selection_offset = 0;
+enum WidgetType {
+    SENDER_NAME,
+    REPLY,
+    TEXT,
+    COUNT,
+};
+
+struct Msg {
+    chat::MsgData data;
+    WidgetType widgets[WidgetType::COUNT];
+    size_t widget_count;
+};
+
+// WidgetType::SENDER_NAME
+static Vector2 widget_sender_name_size_fn(chat::MsgData *, float);
+static void    widget_sender_name_render_fn(chat::MsgData *, Vector2, float, float);
+
+// WidgetType::REPLY
+static Vector2 widget_reply_size_fn(chat::MsgData *, float);
+static void    widget_reply_render_fn(chat::MsgData *, Vector2, float, float);
+
+// WidgetType::TEXT
+static Vector2 widget_text_size_fn(chat::MsgData *, float);
+static void    widget_text_render_fn(chat::MsgData *, Vector2, float, float);
+
+// Global state
+static Font   chat_msg_author_name_font;
+static size_t chat_msg_author_name_font_glyph_width;
+static Font   chat_msg_text_font;
+static size_t chat_msg_text_font_glyph_width;
+static Msg    chat_messages[MESSAGES_CAPACITY];
+static size_t chat_message_count = 0;
+static size_t chat_selection_offset = 0;
+static struct {
+    Vector2 (*size_fn)  (chat::MsgData *msg_data, float max_widget_width);
+    void    (*render_fn)(chat::MsgData *msg_data, Vector2 pos, float max_widget_width, float width);
+} widget_vtable[] = {
+    { widget_sender_name_size_fn, widget_sender_name_render_fn },
+    { widget_reply_size_fn,       widget_reply_render_fn },
+    { widget_text_size_fn,        widget_text_render_fn },
+};
 
 chat::WStr chat::WStr::from(const char *cstr)
 {
@@ -59,190 +94,92 @@ void chat::render(float bottom_margin)
 
     int selected_msg_idx = chat_message_count - chat_selection_offset;
 
-    common::Lines lines = {};
-    Rectangle msg_rect = { 0, height - bottom_margin, 0, 0 };
+    float heights[WidgetType::COUNT];
+    Rectangle msg_rect = { MSG_TEXT_MARGIN_LEFT_RIGHT, height - bottom_margin, 0, 0 };
     for (int i = chat_message_count-1; i >= 0; i--) {
-        // Recalculate the message text
-        lines.recalc(
-                chat_msg_text_font,
-                chat_messages[i].text.data,
-                chat_messages[i].text.len,
-                max_msg_line_width);
+        WidgetType *widgets = chat_messages[i].widgets;
+        size_t widget_count = chat_messages[i].widget_count;
 
-        // Calculate height
-        msg_rect.height = lines.len*MSG_TEXT_FONT_SIZE;
-        msg_rect.height += MSG_AUTHOR_NAME_FONT_SIZE; // reserve place for 'username'
+        // Calculate message rectangle size
+        msg_rect.width = 0;
+        msg_rect.height = 0;
+        size_t height_count = 0;
+        for (size_t j = 0; j < widget_count; j++) {
+            Vector2 size = widget_vtable[widgets[j]].size_fn(
+                    &chat_messages[i].data,
+                    max_msg_line_width);
+            heights[height_count++] = size.y;
+            msg_rect.height += size.y;
+            if (size.x > msg_rect.width) msg_rect.width = size.x;
+        }
+
+        // Calculate position
+        msg_rect.width += 2*MSG_TEXT_PADDING;
         msg_rect.height += 2*MSG_TEXT_PADDING;
-
-        // Calculate width
-        msg_rect.width = lines.max_line_width(chat_msg_text_font);
-        float author_name_width = common::measure_wtext(
-                chat_msg_author_name_font,
-                &chat_messages[i].author_name[0],
-                chat_messages[i].author_name.length());
-        if (msg_rect.width < author_name_width)
-            msg_rect.width = author_name_width;
-
-        // NOTE: A reply consists of 'author_name' and one line of text
-        if (chat_messages[i].reply_to != nullptr) {
-            // Calculate height
-            msg_rect.height +=
-                2*(MSG_REPLY_MARGIN + MSG_REPLY_PADDING + MSG_TEXT_FONT_SIZE);
-
-            float reply_widget_width;
-            { // Calculate width
-                // Calculate the reply_to's text width
-                reply_widget_width = common::measure_wtext(
-                        chat_msg_text_font,
-                        chat_messages[i].reply_to->text.data,
-                        chat_messages[i].reply_to->text.len);
-
-                // Calculate the reply_to's username width
-                float reply_username_width = common::measure_wtext(
-                        chat_msg_author_name_font,
-                        &chat_messages[i].reply_to->author_name[0],
-                        chat_messages[i].reply_to->author_name.length());
-
-                if (reply_username_width > reply_widget_width) {
-                    reply_widget_width = reply_username_width;
-                }
-
-                // Apply reply rectangle padding
-                reply_widget_width += 2*MSG_REPLY_PADDING;
-
-                // Set message rectangle width to max possible value
-                if (reply_widget_width > msg_rect.width) {
-                    msg_rect.width = reply_widget_width > max_msg_line_width ?
-                                     max_msg_line_width :
-                                     reply_widget_width;
-                }
-            }
-
-            // Calculate position
-            msg_rect.width += 2*MSG_TEXT_PADDING; // Apply message padding
-            msg_rect.y -= MSG_DISTANCE + msg_rect.height;
-            if (chat_messages[i].is_mine) {
-                msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
-            } else {
-                msg_rect.x = common::get_chat_view_x() + MSG_TEXT_MARGIN_LEFT_RIGHT;
-            }
-
-            // If the message is selected we show it
-            if (i == selected_msg_idx) {
-                DrawRectangle(0, msg_rect.y, GetScreenWidth(), msg_rect.height, MSG_SELECTED_COLOR);
-            }
-
-            // Draw message rectangle
-            DrawRectangleRounded(
-                    msg_rect,
-                    MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
-                    chat_messages[i].bg_color);
-
-            Vector2 pos = { msg_rect.x+MSG_TEXT_PADDING, msg_rect.y+MSG_TEXT_PADDING };
-
-            // Draw username
-            DrawTextCodepoints(
-                    chat_msg_author_name_font,
-                    (const int *)&chat_messages[i].author_name[0],
-                    chat_messages[i].author_name.length(),
-                    pos, MSG_AUTHOR_NAME_FONT_SIZE, 0, chat_messages[i].author_name_color);
-
-            pos.y += MSG_TEXT_FONT_SIZE + MSG_REPLY_MARGIN;
-
-            // Draw reply rectangle
-            DrawRectangleRounded(
-                    Rectangle{
-                        pos.x, pos.y,
-                        msg_rect.width - 2*MSG_TEXT_PADDING,
-                        2*MSG_REPLY_PADDING + MSG_AUTHOR_NAME_FONT_SIZE + MSG_TEXT_FONT_SIZE },
-                    MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
-                    MSG_REPLY_BG_COLOR);
-
-            // Draw the reply_to's username
-            pos.x += MSG_REPLY_PADDING;
-            pos.y += MSG_REPLY_PADDING;
-            DrawTextCodepoints(
-                    chat_msg_author_name_font,
-                    (const int *)&chat_messages[i].reply_to->author_name[0],
-                    chat_messages[i].reply_to->author_name.length(),
-                    pos, MSG_AUTHOR_NAME_FONT_SIZE, 0, chat_messages[i].reply_to->author_name_color);
-
-            // Draw reply_to's message text
-            pos.y += MSG_AUTHOR_NAME_FONT_SIZE;// + MSG_REPLY_PADDING;
-            common::draw_text_in_width(
-                    chat_msg_text_font, MSG_TEXT_FONT_SIZE, pos,
-                    chat_messages[i].reply_to->text.data,
-                    chat_messages[i].reply_to->text.len,
-                    MSG_FG_COLOR, max_msg_line_width-2*MSG_REPLY_PADDING);
-
-            // Draw message text
-            pos.y += MSG_AUTHOR_NAME_FONT_SIZE + MSG_REPLY_PADDING + MSG_REPLY_MARGIN;
-            pos.x -= MSG_REPLY_PADDING;
-            common::draw_lines(
-                    chat_msg_text_font, MSG_TEXT_FONT_SIZE,
-                    pos, lines, chat_messages[i].fg_color);
+        msg_rect.y -= msg_rect.height + MSG_DISTANCE;
+        if (chat_messages[i].data.is_mine) {
+            msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
         } else {
-            // Calculate position
-            msg_rect.width += 2*MSG_TEXT_PADDING; // Apply message padding
-            msg_rect.y -= MSG_DISTANCE + msg_rect.height;
-            if (chat_messages[i].is_mine) {
-                msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
-            } else {
-                msg_rect.x = common::get_chat_view_x() + MSG_TEXT_MARGIN_LEFT_RIGHT;
-            }
+            msg_rect.x = common::get_chat_view_x() + MSG_TEXT_MARGIN_LEFT_RIGHT;
+        }
 
-            // If the message is selected we show it
-            if (i == selected_msg_idx) {
-                DrawRectangle(0, msg_rect.y, GetScreenWidth(), msg_rect.height, MSG_SELECTED_COLOR);
-            }
+        // Render selection if the message is selected
+        if (i == selected_msg_idx) {
+            DrawRectangle(0, msg_rect.y, GetScreenWidth(), msg_rect.height, MSG_SELECTED_COLOR);
+        }
 
-            // Draw message rectangle
-            DrawRectangleRounded(
-                    msg_rect,
-                    MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
-                    chat_messages[i].bg_color);
+        // Render message rectangle
+        DrawRectangleRounded(
+                msg_rect, MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
+                msg_color_palette[chat_messages[i].data.is_mine].bg_color);
 
-            Vector2 pos = { msg_rect.x+MSG_TEXT_PADDING, msg_rect.y+MSG_TEXT_PADDING };
-
-            // Draw username
-            DrawTextCodepoints(
-                    chat_msg_author_name_font,
-                    (const int *)&chat_messages[i].author_name[0],
-                    chat_messages[i].author_name.length(),
-                    pos, MSG_AUTHOR_NAME_FONT_SIZE, 0, chat_messages[i].author_name_color);
-
-            // Draw message text
-            pos.y += MSG_TEXT_FONT_SIZE;
-            common::draw_lines(
-                    chat_msg_text_font, MSG_TEXT_FONT_SIZE,
-                    pos, lines, chat_messages[i].fg_color);
+        // Render message widgets
+        Vector2 pos = { msg_rect.x+MSG_TEXT_PADDING, msg_rect.y+MSG_TEXT_PADDING };
+        for (size_t j = 0; j < widget_count; j++) {
+            widget_vtable[widgets[j]].render_fn(
+                    &chat_messages[i].data,
+                    pos, max_msg_line_width,
+                    msg_rect.width - 2*MSG_TEXT_PADDING);
+            pos.y += heights[j];
         }
     }
 }
 
-void chat::push_msg(Msg msg)
+void chat::push_msg(MsgData msg_data)
 {
-    if (msg.is_mine) {
+    Msg new_msg = {};
+    new_msg.data = msg_data;
+
+    if (msg_data.is_mine) {
         chat_selection_offset = 0;
-    } else if (chat_selection_offset != 0) {
-        chat_selection_offset += 1;
+    } else {
+        new_msg.widgets[new_msg.widget_count++] = WidgetType::SENDER_NAME;
+        if (chat_selection_offset != 0) {
+            chat_selection_offset += 1;
+        }
     }
 
+    if (msg_data.reply_to != nullptr) {
+        new_msg.widgets[new_msg.widget_count++] = WidgetType::REPLY;
+    }
+
+    new_msg.widgets[new_msg.widget_count++] = WidgetType::TEXT;
+
     if (chat_message_count >= MESSAGES_CAPACITY) {
-        UnloadCodepoints((int*)chat_messages[0].text.data);
-        memmove(&chat_messages[0], &chat_messages[1], (chat_message_count-1)*sizeof(chat::Msg));
+        UnloadCodepoints((int*)chat_messages[0].data.text.data);
+        memmove(&chat_messages[0], &chat_messages[1], (chat_message_count-1)*sizeof(Msg));
         chat_message_count -= 1;
     }
 
-    chat_messages[chat_message_count++] = msg;
+    chat_messages[chat_message_count++] = new_msg;
 }
 
 
-chat::Msg *chat::find_msg(std::int64_t msg_id)
+chat::MsgData *chat::find_msg(std::int64_t msg_id)
 {
     for (int i = chat_message_count-1; i >= 0; i--) {
-        if (chat_messages[i].id == msg_id) {
-            return &chat_messages[i];
+        if (chat_messages[i].data.id == msg_id) {
+            return &chat_messages[i].data;
         }
     }
 
@@ -263,14 +200,91 @@ void chat::select_next_msg()
     }
 }
 
-chat::Msg *chat::get_selected_msg()
+chat::MsgData *chat::get_selected_msg()
 {
     return chat_selection_offset == 0 ? nullptr :
-           &chat_messages[chat_message_count - chat_selection_offset];
+           &chat_messages[chat_message_count - chat_selection_offset].data;
 }
 
-chat::Msg *chat::get_msgs(size_t *count)
+// WIDGET FUNCTIONS IMPLS ///////////////
+
+static Vector2 widget_sender_name_size_fn(chat::MsgData *msg_data, float max_line_len)
 {
-    *count = chat_message_count;
-    return chat_messages;
+    float width = common::measure_wtext(
+            chat_msg_author_name_font,
+            &msg_data->sender_name[0],
+            msg_data->sender_name.length());
+
+    return { width > max_line_len ? max_line_len : width, MSG_AUTHOR_NAME_FONT_SIZE };
+}
+
+static void widget_sender_name_render_fn(chat::MsgData *msg_data, Vector2 pos, float max_line_len, float)
+{
+    common::draw_text_in_width(
+            chat_msg_author_name_font, MSG_AUTHOR_NAME_FONT_SIZE,
+            pos, &msg_data->sender_name[0], msg_data->sender_name.length(),
+            msg_color_palette[msg_data->is_mine].sender_name_color, max_line_len);
+}
+
+static common::Lines text_lines = {};
+static Vector2 widget_text_size_fn(chat::MsgData *msg_data, float max_line_len)
+{
+    text_lines.recalc(
+            chat_msg_text_font,
+            msg_data->text.data, msg_data->text.len,
+            max_line_len);
+
+    return { text_lines.max_line_width(chat_msg_text_font), text_lines.len*MSG_TEXT_FONT_SIZE };
+}
+
+static void widget_text_render_fn(chat::MsgData *msg_data, Vector2 pos, float, float)
+{
+    common::draw_lines(
+            chat_msg_text_font, MSG_TEXT_FONT_SIZE,
+            pos, text_lines, msg_color_palette[msg_data->is_mine].fg_color);
+}
+
+static Vector2 widget_reply_size_fn(chat::MsgData *msg_data, float max_line_len)
+{
+    float reply_text_width = common::measure_wtext(
+            chat_msg_text_font,
+            msg_data->reply_to->text.data,
+            msg_data->reply_to->text.len);
+
+    float reply_sender_name_width = common::measure_wtext(
+            chat_msg_text_font,
+            &msg_data->reply_to->sender_name[0],
+            msg_data->reply_to->sender_name.length());
+
+    float width = 
+        (reply_text_width > reply_sender_name_width ?
+         reply_text_width :
+         reply_sender_name_width) + 2*MSG_REPLY_PADDING;
+
+    return { width > max_line_len ? max_line_len : width, 2*MSG_REPLY_PADDING + 2*MSG_TEXT_FONT_SIZE };
+}
+
+static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float max_widget_width, float width)
+{
+    Rectangle reply_rect = { pos.x, pos.y, width, 2*MSG_REPLY_PADDING + 2*MSG_TEXT_FONT_SIZE };
+    DrawRectangleRounded(
+            reply_rect, MSG_REC_ROUNDNESS/reply_rect.height,
+            MSG_REC_SEGMENT_COUNT, msg_color_palette[msg_data->is_mine].reply_bg_color);
+
+    pos.x += MSG_REPLY_PADDING;
+    pos.y += MSG_REPLY_PADDING;
+
+    common::draw_text_in_width(
+            chat_msg_author_name_font, MSG_AUTHOR_NAME_FONT_SIZE,
+            pos, &msg_data->reply_to->sender_name[0],
+            msg_data->reply_to->sender_name.length(),
+            msg_color_palette[msg_data->reply_to->is_mine].sender_name_color, max_widget_width);
+
+    pos.y += MSG_AUTHOR_NAME_FONT_SIZE;
+
+    common::draw_text_in_width(
+            chat_msg_text_font, MSG_TEXT_FONT_SIZE,
+            pos, msg_data->reply_to->text.data,
+            msg_data->reply_to->text.len,
+            msg_color_palette[msg_data->is_mine].fg_color, max_widget_width);
 }

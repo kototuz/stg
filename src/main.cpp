@@ -105,7 +105,7 @@ template<typename T> static void tgclient_request(td_api::object_ptr<td_api::Fun
 #define tgclient_silent_request(req) manager.send(client_id, SILENT_REQUEST_ID, req)
 
 // Util functions
-static chat::Msg tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg);
+static chat::MsgData tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg);
 static std::vector<std::wstring_view> split(std::wstring_view src);
 static std::int64_t to_int64_t(std::wstring_view text);
 
@@ -251,7 +251,7 @@ static void tgclient_send_msg()
                 message_content->text_->text_ = std::move(text_as_str);
                 send_message->input_message_content_ = std::move(message_content);
 
-                chat::Msg *reply_to;
+                chat::MsgData *reply_to;
                 if ((reply_to = chat::get_selected_msg())) {
                     send_message->reply_to_ =
                         td_api::make_object<td_api::inputMessageReplyToMessage>(
@@ -323,9 +323,9 @@ static td_api::object_ptr<T> tgclient_request(td_api::object_ptr<td_api::Functio
     /*}*/
 }
 
-static chat::Msg tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg)
+static chat::MsgData tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg)
 {
-    chat::Msg new_msg = {};
+    chat::MsgData new_msg = {};
     new_msg.id = tg_msg->id_;
 
     std::wcout << "Get message " << tg_msg->id_ << "\n";
@@ -348,24 +348,14 @@ static chat::Msg tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_msg)
         }
     }
 
-    // Set color palette
-    if (tg_msg->is_outgoing_) {
-        new_msg.is_mine = true;
-        new_msg.bg_color = MSG_MY_BG_COLOR;
-        new_msg.fg_color = MSG_MY_FG_COLOR;
-        new_msg.author_name_color = MSG_MY_NAME_COLOR;
-    } else {
-        new_msg.fg_color = MSG_OTHERS_FG_COLOR;
-        new_msg.bg_color = MSG_OTHERS_BG_COLOR;
-        new_msg.author_name_color = MSG_OTHERS_NAME_COLOR;
-    }
+    new_msg.is_mine = tg_msg->is_outgoing_;
 
     // Get message author name
     if (tg_msg->sender_id_->get_id() == td_api::messageSenderUser::ID) {
         auto id = static_cast<td_api::messageSenderUser &>(*tg_msg->sender_id_).user_id_;
-        new_msg.author_name = tgclient_get_username(id);
+        new_msg.sender_name = tgclient_get_username(id);
     } else {
-        new_msg.author_name = tgclient_get_chat_title(
+        new_msg.sender_name = tgclient_get_chat_title(
                 static_cast<td_api::messageSenderChat &>(
                     *tg_msg->sender_id_).chat_id_);
     }
@@ -476,7 +466,7 @@ HANDLER_IMPL(updateMessageContent, content)
 
 HANDLER_IMPL(updateMessageSendSucceeded, suc)
 {
-    chat::Msg *old_msg = chat::find_msg(suc->old_message_id_);
+    chat::MsgData *old_msg = chat::find_msg(suc->old_message_id_);
     std::wcout << old_msg->id << " -> " << suc->message_->id_ << "\n";
     if (old_msg != nullptr) old_msg->id = suc->message_->id_;
 }

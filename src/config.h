@@ -13,13 +13,19 @@ const Color CHAT_BG_COLOR = {0x12, 0x12, 0x12, 0xff};
 #define MSG_AUTHOR_NAME_FONT_SIZE  28.0f
 #define MSG_TEXT_FONT_PATH         "resources/Roboto-Regular.ttf"
 #define MSG_TEXT_FONT_SIZE         30.0f
-const Color MSG_BG_COLOR          = {0x21,0x21,0x21,0xff};
-const Color MSG_MY_FG_COLOR       = WHITE;
-const Color MSG_OTHERS_FG_COLOR   = WHITE;
-const Color MSG_MY_BG_COLOR       = {0x35, 0x78, 0x94, 0xff};
-const Color MSG_OTHERS_BG_COLOR   = {0x26, 0x26, 0x26, 0xff};
-const Color MSG_MY_NAME_COLOR     = {0x26, 0xd9, 0x83, 0xff};
-const Color MSG_OTHERS_NAME_COLOR = {0xff, 0xa3, 0xf4, 0xff};
+
+// 0 element is the palette for other messages
+// 1 element is the palette for my messages
+const struct {
+    Color bg_color;
+    Color fg_color;
+    Color sender_name_color;
+    Color reply_bg_color;
+} msg_color_palette[2] = {
+    {{0x21, 0x21, 0x21, 0xff}, WHITE, {0xff, 0xa3, 0xf4, 0xff}, {0xff, 0xff, 0xff, 0x1f}},
+    {{0x76, 0x6a, 0xc8, 0xff}, WHITE, {0x26, 0xd9, 0x83, 0xff}, {0xff, 0xff, 0xff, 0x1f}},
+};
+
 #define MSG_FG_COLOR               WHITE
 #define MSG_REC_ROUNDNESS          40
 #define MSG_REC_SEGMENT_COUNT      40
@@ -35,7 +41,7 @@ const Color MSG_REPLY_BG_COLOR      = {0xff, 0xff, 0xff, 0x20};
 
 #define TED_FONT_PATH         "resources/Roboto-Regular.ttf"
 #define TED_FONT_SIZE         30.0f
-#define TED_BG_COLOR          MSG_BG_COLOR
+const Color TED_BG_COLOR          = {0x21, 0x21, 0x21, 0xff};
 #define TED_FG_COLOR          WHITE
 #define TED_CURSOR_CODE       L'█'
 #define TED_CURSOR_COLOR      WHITE
