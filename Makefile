@@ -16,7 +16,7 @@ TD_LIBS=build/libtdapi.a          \
         build/libtdactor.a
 
 build/stg: src/config.h $(SRC) build/libtdclient.a build/libraylib.a
-	$(CC) $(CFLAGS) -DAPI_ID=$(API_ID) -DAPI_HASH=$(API_HASH) -o build/stg $(SRC) -Iinclude -Lbuild $(basename $(subst build/lib, -l, $(TD_LIBS))) -lraylib -lm -lz -lssl -lcrypto 
+	$(CC) $(CFLAGS) -DAPI_ID=$(API_ID) -DAPI_HASH="\"$(API_HASH)\"" -o build/stg $(SRC) -Iinclude -Lbuild $(basename $(subst build/lib, -l, $(TD_LIBS))) -lraylib -lm -lz -lssl -lcrypto 
 
 build/libraylib.a:
 	mkdir -p build

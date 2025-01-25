@@ -15,6 +15,14 @@
 #include "chat.h"
 #include "ted.h"
 
+#ifndef API_HASH
+#   error 'API_HASH' must be provided
+#endif
+
+#ifndef API_ID
+#   error 'API_ID' must be provided
+#endif
+
 #define UPDATE_HANDLERS \
     H(updateAuthorizationState) \
     H(authorizationStateWaitTdlibParameters) \
@@ -410,9 +418,7 @@ HANDLER_IMPL(authorizationStateWaitTdlibParameters, wait_params)
     params->use_message_database_ = true;
     params->use_secret_chats_ = false;
     params->api_id_ = API_ID;
-#define stringify(x) #x
-    params->api_hash_ = stringify(API_HASH);
-#undef stringify
+    params->api_hash_ = API_HASH;
     params->system_language_code_ = "en";
     params->device_model_ = "Desktop";
     params->system_version_ = "Debian 12";
