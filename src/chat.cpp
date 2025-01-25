@@ -12,30 +12,32 @@
 #include "ted.h"
 #include "config.h"
 
-enum WidgetType {
-    SENDER_NAME,
-    REPLY,
-    TEXT,
+#define MESSAGES_CAPACITY 5
+
+#define LIST_OF_WIDGETS \
+    X(SENDER_NAME, widget_sender_name_size_fn, widget_sender_name_render_fn) \
+    X(REPLY,       widget_reply_size_fn,       widget_reply_render_fn) \
+    X(TEXT,        widget_text_size_fn,        widget_text_render_fn) \
+
+enum WidgetTag {
+#define X(tag_name, ...) tag_name,
+    LIST_OF_WIDGETS
+#undef X
     COUNT,
 };
 
 struct Msg {
     chat::MsgData data;
-    WidgetType widgets[WidgetType::COUNT];
+    WidgetTag widgets[WidgetTag::COUNT];
     size_t widget_count;
 };
 
-// WidgetType::SENDER_NAME
-static Vector2 widget_sender_name_size_fn(chat::MsgData *, float);
-static void    widget_sender_name_render_fn(chat::MsgData *, Vector2, float, float);
-
-// WidgetType::REPLY
-static Vector2 widget_reply_size_fn(chat::MsgData *, float);
-static void    widget_reply_render_fn(chat::MsgData *, Vector2, float, float);
-
-// WidgetType::TEXT
-static Vector2 widget_text_size_fn(chat::MsgData *, float);
-static void    widget_text_render_fn(chat::MsgData *, Vector2, float, float);
+// Declare widget functions
+#define X(tag_name, size_fn, render_fn) \
+    static Vector2 size_fn(chat::MsgData*, float); \
+    static void render_fn(chat::MsgData*, Vector2, float, float);
+LIST_OF_WIDGETS
+#undef X
 
 // Global state
 static Font   chat_msg_author_name_font;
@@ -50,9 +52,9 @@ static struct {
     Vector2 (*size_fn)  (chat::MsgData *msg_data, float max_widget_width);
     void    (*render_fn)(chat::MsgData *msg_data, Vector2 pos, float max_widget_width, float width);
 } widget_vtable[] = {
-    { widget_sender_name_size_fn, widget_sender_name_render_fn },
-    { widget_reply_size_fn,       widget_reply_render_fn },
-    { widget_text_size_fn,        widget_text_render_fn },
+#define X(tag_name, size_fn, render_fn) { size_fn, render_fn },
+    LIST_OF_WIDGETS
+#undef X
 };
 
 chat::WStr chat::WStr::from(const char *cstr)
@@ -87,6 +89,8 @@ void chat::init()
 
 void chat::render(float bottom_margin, float mouse_wheel_move)
 {
+    DrawFPS(0, 0);
+
     float height = GetScreenHeight();
 
     // Calculate max line width
@@ -95,10 +99,10 @@ void chat::render(float bottom_margin, float mouse_wheel_move)
 
     int selected_msg_idx = chat_message_count - chat_selection_offset;
 
-    float heights[WidgetType::COUNT];
+    float heights[WidgetTag::COUNT];
     Rectangle msg_rect = { MSG_TEXT_MARGIN_LEFT_RIGHT, height + chat_scroll - bottom_margin, 0, 0 };
     for (int i = chat_message_count-1; i >= 0; i--) {
-        WidgetType *widgets = chat_messages[i].widgets;
+        WidgetTag *widgets = chat_messages[i].widgets;
         size_t widget_count = chat_messages[i].widget_count;
 
         // Calculate message rectangle size
@@ -157,17 +161,17 @@ void chat::push_msg(MsgData msg_data)
     if (msg_data.is_mine) {
         chat_selection_offset = 0;
     } else {
-        new_msg.widgets[new_msg.widget_count++] = WidgetType::SENDER_NAME;
+        new_msg.widgets[new_msg.widget_count++] = WidgetTag::SENDER_NAME;
         if (chat_selection_offset != 0) {
             chat_selection_offset += 1;
         }
     }
 
     if (msg_data.reply_to != nullptr) {
-        new_msg.widgets[new_msg.widget_count++] = WidgetType::REPLY;
+        new_msg.widgets[new_msg.widget_count++] = WidgetTag::REPLY;
     }
 
-    new_msg.widgets[new_msg.widget_count++] = WidgetType::TEXT;
+    new_msg.widgets[new_msg.widget_count++] = WidgetTag::TEXT;
 
     if (chat_message_count >= MESSAGES_CAPACITY) {
         UnloadCodepoints((int*)chat_messages[0].data.text.data);

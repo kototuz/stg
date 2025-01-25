@@ -5,8 +5,6 @@
 
 #include <raylib.h>
 
-#define MESSAGES_CAPACITY 128
-
 namespace chat {
     struct WStr {
         wchar_t *data;
