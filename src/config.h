@@ -36,23 +36,24 @@ const struct {
     Color sender_name_color;
     Color reply_bg_color;
 } msg_color_palette[2] = {
-    {{0x21, 0x21, 0x21, 0xff}, WHITE, {0xff, 0xa3, 0xf4, 0xff}, {0xff, 0xff, 0xff, 0x1f}},
-    {{0x76, 0x6a, 0xc8, 0xff}, WHITE, {0x26, 0xd9, 0x83, 0xff}, {0xff, 0xff, 0xff, 0x1f}},
+    {{0x21, 0x21, 0x21, 0xff}, WHITE, {0x40, 0x8a, 0xcf, 0xff}, {0x25, 0x2c, 0x33, 0xff}},
+    {{0x76, 0x6a, 0xc8, 0xff}, WHITE, {0xf6, 0x81, 0x36, 0xff}, {0x37, 0x2b, 0x24, 0xff}},
 };
 
-#define MSG_AUTHOR_NAME_FONT_PATH  "resources/Roboto-Regular.ttf"
-#define MSG_AUTHOR_NAME_FONT_SIZE  28.0f
-#define MSG_TEXT_FONT_PATH         "resources/Roboto-Regular.ttf"
-#define MSG_TEXT_FONT_SIZE         30.0f
-#define MSG_REC_ROUNDNESS          40
-#define MSG_REC_SEGMENT_COUNT      40
-#define MSG_TEXT_MARGIN_LEFT_RIGHT 20.0f
-#define MSG_TEXT_PADDING           15.0f
-#define MSG_DISTANCE               10.0f
-#define MSG_SELECTED_COLOR         CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
-#define MSG_REPLY_PADDING          10.0f
-#define MSG_REPLY_MARGIN           8.0f
-#define MSG_WIDGET_DISTANCE        6.0f
+#define MSG_REPLY_BG_COLOR_IN_MY_MSG CLITERAL(Color){0x87, 0x75, 0xda, 0xff}
+#define MSG_AUTHOR_NAME_FONT_PATH    "resources/Roboto-Regular.ttf"
+#define MSG_AUTHOR_NAME_FONT_SIZE    28.0f
+#define MSG_TEXT_FONT_PATH           "resources/Roboto-Regular.ttf"
+#define MSG_TEXT_FONT_SIZE           30.0f
+#define MSG_REC_ROUNDNESS            40
+#define MSG_REC_SEGMENT_COUNT        40
+#define MSG_TEXT_MARGIN_LEFT_RIGHT   20.0f
+#define MSG_TEXT_PADDING             15.0f
+#define MSG_DISTANCE                 10.0f
+#define MSG_SELECTED_COLOR           CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
+#define MSG_REPLY_PADDING            10.0f
+#define MSG_REPLY_MARGIN             8.0f
+#define MSG_WIDGET_DISTANCE          6.0f
 
 #define TED_FONT_PATH         "resources/Roboto-Regular.ttf"
 #define TED_FONT_SIZE         30.0f

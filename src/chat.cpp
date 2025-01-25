@@ -279,9 +279,20 @@ static Vector2 widget_reply_size_fn(chat::MsgData *msg_data, float max_line_len)
 static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float max_widget_width, float width)
 {
     Rectangle reply_rect = { pos.x, pos.y, width, 2*MSG_REPLY_PADDING + 2*MSG_TEXT_FONT_SIZE };
+
+    Color reply_sender_name_color;
+    Color reply_bg_color;
+    if (msg_data->is_mine) {
+        reply_sender_name_color = msg_color_palette[1].fg_color;
+        reply_bg_color = MSG_REPLY_BG_COLOR_IN_MY_MSG;
+    } else {
+        reply_sender_name_color = msg_color_palette[msg_data->reply_to->is_mine].sender_name_color;
+        reply_bg_color = msg_color_palette[msg_data->reply_to->is_mine].reply_bg_color;
+    }
+
     DrawRectangleRounded(
             reply_rect, MSG_REC_ROUNDNESS/reply_rect.height,
-            MSG_REC_SEGMENT_COUNT, msg_color_palette[msg_data->is_mine].reply_bg_color);
+            MSG_REC_SEGMENT_COUNT, reply_bg_color);
 
     pos.x += MSG_REPLY_PADDING;
     pos.y += MSG_REPLY_PADDING;
@@ -290,7 +301,7 @@ static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float m
             chat_msg_author_name_font, MSG_AUTHOR_NAME_FONT_SIZE,
             pos, &msg_data->reply_to->sender_name[0],
             msg_data->reply_to->sender_name.length(),
-            msg_color_palette[msg_data->reply_to->is_mine].sender_name_color, max_widget_width);
+            reply_sender_name_color, max_widget_width);
 
     pos.y += MSG_AUTHOR_NAME_FONT_SIZE;
 
