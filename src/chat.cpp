@@ -95,19 +95,21 @@ void chat::render(float bottom_margin, float mouse_wheel_move)
 
     // Calculate max line width
     float max_msg_line_width =
-        floor(CHAT_VIEW_WIDTH - 2*MSG_TEXT_PADDING - 2*MSG_TEXT_MARGIN_LEFT_RIGHT);
+        floor(CHAT_VIEW_WIDTH -
+              BoxModel::MSG_LM - BoxModel::MSG_LP -
+              BoxModel::MSG_RP - BoxModel::MSG_RM);
 
     int selected_msg_idx = chat_message_count - chat_selection_offset;
 
     float heights[WidgetTag::COUNT];
-    Rectangle msg_rect = { MSG_TEXT_MARGIN_LEFT_RIGHT, height + chat_scroll - bottom_margin, 0, 0 };
+    Rectangle msg_rect = { BoxModel::MSG_LM, height + chat_scroll - bottom_margin, 0, 0 };
     for (int i = chat_message_count-1; i >= 0; i--) {
         WidgetTag *widgets = chat_messages[i].widgets;
         size_t widget_count = chat_messages[i].widget_count;
 
         // Calculate message rectangle size
         msg_rect.width = 0;
-        msg_rect.height = 0;
+        msg_rect.height = (widget_count-1) * MSG_WIDGET_DISTANCE;
         size_t height_count = 0;
         for (size_t j = 0; j < widget_count; j++) {
             Vector2 size = widget_vtable[widgets[j]].size_fn(
@@ -119,13 +121,13 @@ void chat::render(float bottom_margin, float mouse_wheel_move)
         }
 
         // Calculate position
-        msg_rect.width += 2*MSG_TEXT_PADDING;
-        msg_rect.height += 2*MSG_TEXT_PADDING;
-        msg_rect.y -= msg_rect.height + MSG_DISTANCE;
+        msg_rect.width += BoxModel::MSG_LP + BoxModel::MSG_RP;
+        msg_rect.height += BoxModel::MSG_TP + BoxModel::MSG_BP;
+        msg_rect.y -= msg_rect.height + BoxModel::MSG_BM;
         if (chat_messages[i].data.is_mine) {
-            msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - MSG_TEXT_MARGIN_LEFT_RIGHT;
+            msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - BoxModel::MSG_LM - BoxModel::MSG_RM;
         } else {
-            msg_rect.x = common::get_chat_view_x() + MSG_TEXT_MARGIN_LEFT_RIGHT;
+            msg_rect.x = common::get_chat_view_x() + BoxModel::MSG_LM;
         }
 
         // Render selection if the message is selected
@@ -139,14 +141,16 @@ void chat::render(float bottom_margin, float mouse_wheel_move)
                 msg_color_palette[chat_messages[i].data.is_mine].bg_color);
 
         // Render message widgets
-        Vector2 pos = { msg_rect.x+MSG_TEXT_PADDING, msg_rect.y+MSG_TEXT_PADDING };
+        Vector2 pos = { msg_rect.x+BoxModel::MSG_LP, msg_rect.y+BoxModel::MSG_TP };
         for (size_t j = 0; j < widget_count; j++) {
             widget_vtable[widgets[j]].render_fn(
                     &chat_messages[i].data,
                     pos, max_msg_line_width,
-                    msg_rect.width - 2*MSG_TEXT_PADDING);
-            pos.y += heights[j];
+                    msg_rect.width - BoxModel::MSG_LP - BoxModel::MSG_RP);
+            pos.y += heights[j] + MSG_WIDGET_DISTANCE;
         }
+
+        msg_rect.y -= BoxModel::MSG_TM;
     }
 
     if (chat_scroll+mouse_wheel_move >= 0 && msg_rect.y+mouse_wheel_move <= MSG_DISTANCE)

@@ -10,6 +10,24 @@
 #define CHAT_BG_COLOR     CLITERAL(Color){0x12, 0x12, 0x12, 0xff}
 #define CHAT_SCROLL_SPEED 100.0f
 
+#define LIST_OF_BOX_MODELS \
+    X(MSG, 2.0, 2.0, 0.0, 0.0, 10.0, 12.0, 11.0, 10.0)   \
+    X(TED, 15.0, 25.0, 0.0, 0.0, 21.0, 21.0, 20.0, 20.0) \
+
+struct BoxModel {
+#define X(name, tm, bm, lm, rm, tp, bp, lp, rp)                 \
+    static constexpr float name ## _TM = tm; /*Top margin*/     \
+    static constexpr float name ## _BM = bm; /*Bottom margin*/  \
+    static constexpr float name ## _LM = lm; /*Left margin*/    \
+    static constexpr float name ## _RM = rm; /*Right margin*/   \
+    static constexpr float name ## _TP = tp; /*Top padding*/    \
+    static constexpr float name ## _BP = bp; /*Bottom padding*/ \
+    static constexpr float name ## _LP = lp; /*Left padding*/   \
+    static constexpr float name ## _RP = rp; /*Right padding*/
+    LIST_OF_BOX_MODELS
+#undef X
+};
+
 // 0 element is the palette for other messages
 // 1 element is the palette for my messages
 const struct {
@@ -34,6 +52,7 @@ const struct {
 #define MSG_SELECTED_COLOR         CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
 #define MSG_REPLY_PADDING          10.0f
 #define MSG_REPLY_MARGIN           8.0f
+#define MSG_WIDGET_DISTANCE        6.0f
 
 #define TED_FONT_PATH         "resources/Roboto-Regular.ttf"
 #define TED_FONT_SIZE         30.0f

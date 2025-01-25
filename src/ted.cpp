@@ -80,18 +80,21 @@ void ted::clear()
 void ted::render()
 {
     // Calculate max line
-    ted_max_line_width = floor(CHAT_VIEW_WIDTH - 2*TED_MARGIN - 2*TED_PADDING);
+    ted_max_line_width =
+        floor(CHAT_VIEW_WIDTH -
+              BoxModel::TED_LM - BoxModel::TED_LP -
+              BoxModel::TED_RP - BoxModel::TED_RM);
 
     // Render text editor rectangle
     Rectangle ted_rec = {};
-    ted_rec.width = CHAT_VIEW_WIDTH - 2*TED_MARGIN;
-    ted_rec.height = ted_lines.len*TED_FONT_SIZE + 2*TED_PADDING;
-    ted_rec.x = common::get_chat_view_x() + TED_MARGIN;
-    ted_rec.y = GetScreenHeight() - ted_rec.height - TED_MARGIN;
+    ted_rec.width = CHAT_VIEW_WIDTH - BoxModel::TED_LM - BoxModel::TED_RM;
+    ted_rec.height = ted_lines.len*TED_FONT_SIZE + BoxModel::TED_TP + BoxModel::TED_BP;
+    ted_rec.x = common::get_chat_view_x() + BoxModel::TED_LM;
+    ted_rec.y = GetScreenHeight() - ted_rec.height - BoxModel::TED_BM;
     DrawRectangleRounded(ted_rec, TED_REC_ROUNDNESS/ted_rec.height, TED_REC_SEGMENT_COUNT, TED_BG_COLOR);
 
     // Render placeholder or text if it exists
-    Vector2 pos = { ted_rec.x + TED_PADDING, ted_rec.y + TED_PADDING };
+    Vector2 pos = { ted_rec.x + BoxModel::TED_LP, ted_rec.y + BoxModel::TED_TP };
     if (ted_buffer_len == 0) {
         DrawTextCodepoints(
                 ted_font,
@@ -247,7 +250,9 @@ void ted::delete_line()
 
 float ted::get_height()
 {
-    return ted_lines.len*TED_FONT_SIZE + TED_MARGIN + 2*TED_PADDING;
+    return ted_lines.len*TED_FONT_SIZE +
+           BoxModel::TED_BM + BoxModel::TED_BP +
+           BoxModel::TED_TP + BoxModel::TED_TM;
 }
 
 std::wstring_view ted::get_text()
