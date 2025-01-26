@@ -29,6 +29,7 @@ float common::get_chat_view_x()
     return (GetScreenWidth()/2) - (CHAT_VIEW_WIDTH/2);
 }
 
+// TODO: replace '\n' with ' '
 void common::draw_text_in_width(
         Font font, int font_size,
         Vector2 pos,

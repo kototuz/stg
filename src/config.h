@@ -60,12 +60,11 @@ const struct {
 #define MSG_TEXT_FONT_ID             FontId::ROBOTO_REGULAR
 #define MSG_REC_ROUNDNESS            40
 #define MSG_REC_SEGMENT_COUNT        40
-#define MSG_TEXT_MARGIN_LEFT_RIGHT   20.0f
-#define MSG_TEXT_PADDING             15.0f
 #define MSG_DISTANCE                 10.0f
 #define MSG_SELECTED_COLOR           CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
 #define MSG_REPLY_PADDING            10.0f
-#define MSG_REPLY_MARGIN             8.0f
+#define MSG_REPLY_REC_ROUNDNESS      30
+#define MSG_REPLY_REC_SEGMENT_COUNT  30
 #define MSG_WIDGET_DISTANCE          6.0f
 
 #define TED_FONT_ID           FontId::ROBOTO_REGULAR
@@ -73,8 +72,6 @@ const struct {
 #define TED_FG_COLOR          WHITE
 #define TED_CURSOR_COLOR      WHITE
 #define TED_PLACEHOLDER_COLOR CLITERAL(Color){0x40, 0x40, 0x40, 0xff}
-#define TED_PADDING           15.0f
-#define TED_MARGIN            20.0f
 #define TED_REC_ROUNDNESS     40
 #define TED_REC_SEGMENT_COUNT 40
 #define COMMAND_START_SYMBOL  ':'

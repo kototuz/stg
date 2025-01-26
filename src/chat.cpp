@@ -274,8 +274,8 @@ static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float m
     }
 
     DrawRectangleRounded(
-            reply_rect, MSG_REC_ROUNDNESS/reply_rect.height,
-            MSG_REC_SEGMENT_COUNT, reply_bg_color);
+            reply_rect, MSG_REPLY_REC_ROUNDNESS/reply_rect.height,
+            MSG_REPLY_REC_SEGMENT_COUNT, reply_bg_color);
 
     pos.x += MSG_REPLY_PADDING;
     pos.y += MSG_REPLY_PADDING;
