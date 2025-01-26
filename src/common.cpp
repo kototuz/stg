@@ -6,12 +6,22 @@
 #include "common.h"
 #include "config.h"
 
+Font common::fonts[];
+
 static float get_glyph_width(Font font, wchar_t codepoint)
 {
     int cp_idx = GetGlyphIndex(font, codepoint);
     return (font.glyphs[cp_idx].advanceX == 0) ?
            font.recs[cp_idx].width :
            font.glyphs[cp_idx].advanceX;
+}
+
+void common::init()
+{
+#define X(name, path, size) \
+    fonts[FontId::name] = LoadFontEx(path, size, nullptr, FONT_GLYPH_COUNT);
+    LIST_OF_FONTS
+#undef X
 }
 
 float common::get_chat_view_x()

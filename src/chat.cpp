@@ -40,10 +40,6 @@ LIST_OF_WIDGETS
 #undef X
 
 // Global state
-static Font   chat_msg_author_name_font;
-static size_t chat_msg_author_name_font_glyph_width;
-static Font   chat_msg_text_font;
-static size_t chat_msg_text_font_glyph_width;
 static Msg    chat_messages[MESSAGES_CAPACITY];
 static size_t chat_message_count = 0;
 static size_t chat_selection_offset = 0;
@@ -64,28 +60,7 @@ chat::WStr chat::WStr::from(const char *cstr)
     return result;
 }
 
-void chat::init()
-{
-    // Load msg author name font
-    chat_msg_author_name_font = LoadFontEx(
-            MSG_AUTHOR_NAME_FONT_PATH,
-            MSG_AUTHOR_NAME_FONT_SIZE,
-            nullptr, FONT_GLYPH_COUNT);
-    chat_msg_author_name_font_glyph_width =
-        MSG_AUTHOR_NAME_FONT_SIZE /
-        chat_msg_author_name_font.baseSize *
-        chat_msg_author_name_font.glyphs[0].advanceX;
-
-    // Load msg text font
-    chat_msg_text_font = LoadFontEx(
-            MSG_TEXT_FONT_PATH,
-            MSG_TEXT_FONT_SIZE,
-            nullptr, FONT_GLYPH_COUNT);
-    chat_msg_text_font_glyph_width =
-        MSG_TEXT_FONT_SIZE /
-        chat_msg_text_font.baseSize *
-        chat_msg_text_font.glyphs[0].advanceX;
-}
+void chat::init() { }
 
 void chat::render(float bottom_margin, float mouse_wheel_move)
 {
@@ -223,17 +198,18 @@ chat::MsgData *chat::get_selected_msg()
 static Vector2 widget_sender_name_size_fn(chat::MsgData *msg_data, float max_line_len)
 {
     float width = common::measure_wtext(
-            chat_msg_author_name_font,
+            common::fonts[MSG_SENDER_NAME_FONT_ID],
             &msg_data->sender_name[0],
             msg_data->sender_name.length());
 
-    return { width > max_line_len ? max_line_len : width, MSG_AUTHOR_NAME_FONT_SIZE };
+    return { width > max_line_len ? max_line_len : width, (float)common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize };
 }
 
 static void widget_sender_name_render_fn(chat::MsgData *msg_data, Vector2 pos, float max_line_len, float)
 {
     common::draw_text_in_width(
-            chat_msg_author_name_font, MSG_AUTHOR_NAME_FONT_SIZE,
+            common::fonts[MSG_SENDER_NAME_FONT_ID],
+            common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize,
             pos, &msg_data->sender_name[0], msg_data->sender_name.length(),
             msg_color_palette[msg_data->is_mine].sender_name_color, max_line_len);
 }
@@ -242,29 +218,30 @@ static common::Lines text_lines = {};
 static Vector2 widget_text_size_fn(chat::MsgData *msg_data, float max_line_len)
 {
     text_lines.recalc(
-            chat_msg_text_font,
+            common::fonts[MSG_TEXT_FONT_ID],
             msg_data->text.data, msg_data->text.len,
             max_line_len);
 
-    return { text_lines.max_line_width(chat_msg_text_font), text_lines.len*MSG_TEXT_FONT_SIZE };
+    return { text_lines.max_line_width(common::fonts[MSG_TEXT_FONT_ID]), (float)text_lines.len*common::fonts[MSG_TEXT_FONT_ID].baseSize };
 }
 
 static void widget_text_render_fn(chat::MsgData *msg_data, Vector2 pos, float, float)
 {
     common::draw_lines(
-            chat_msg_text_font, MSG_TEXT_FONT_SIZE,
+            common::fonts[MSG_TEXT_FONT_ID],
+            common::fonts[MSG_TEXT_FONT_ID].baseSize,
             pos, text_lines, msg_color_palette[msg_data->is_mine].fg_color);
 }
 
 static Vector2 widget_reply_size_fn(chat::MsgData *msg_data, float max_line_len)
 {
     float reply_text_width = common::measure_wtext(
-            chat_msg_text_font,
+            common::fonts[MSG_TEXT_FONT_ID],
             msg_data->reply_to->text.data,
             msg_data->reply_to->text.len);
 
     float reply_sender_name_width = common::measure_wtext(
-            chat_msg_text_font,
+            common::fonts[MSG_SENDER_NAME_FONT_ID],
             &msg_data->reply_to->sender_name[0],
             msg_data->reply_to->sender_name.length());
 
@@ -273,12 +250,18 @@ static Vector2 widget_reply_size_fn(chat::MsgData *msg_data, float max_line_len)
          reply_text_width :
          reply_sender_name_width) + 2*MSG_REPLY_PADDING;
 
-    return { width > max_line_len ? max_line_len : width, 2*MSG_REPLY_PADDING + 2*MSG_TEXT_FONT_SIZE };
+    return {
+        width > max_line_len ? max_line_len : width,
+              2*MSG_REPLY_PADDING +
+                  common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize +
+                  common::fonts[MSG_TEXT_FONT_ID].baseSize };
 }
 
 static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float max_widget_width, float width)
 {
-    Rectangle reply_rect = { pos.x, pos.y, width, 2*MSG_REPLY_PADDING + 2*MSG_TEXT_FONT_SIZE };
+    Rectangle reply_rect = { pos.x, pos.y, width, 2*MSG_REPLY_PADDING +
+        common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize +
+        common::fonts[MSG_TEXT_FONT_ID].baseSize };
 
     Color reply_sender_name_color;
     Color reply_bg_color;
@@ -298,15 +281,15 @@ static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float m
     pos.y += MSG_REPLY_PADDING;
 
     common::draw_text_in_width(
-            chat_msg_author_name_font, MSG_AUTHOR_NAME_FONT_SIZE,
+            common::fonts[MSG_SENDER_NAME_FONT_ID], common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize,
             pos, &msg_data->reply_to->sender_name[0],
             msg_data->reply_to->sender_name.length(),
             reply_sender_name_color, max_widget_width);
 
-    pos.y += MSG_AUTHOR_NAME_FONT_SIZE;
+    pos.y += common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize;
 
     common::draw_text_in_width(
-            chat_msg_text_font, MSG_TEXT_FONT_SIZE,
+            common::fonts[MSG_TEXT_FONT_ID], common::fonts[MSG_TEXT_FONT_ID].baseSize,
             pos, msg_data->reply_to->text.data,
             msg_data->reply_to->text.len,
             msg_color_palette[msg_data->is_mine].fg_color, max_widget_width);

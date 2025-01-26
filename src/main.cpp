@@ -11,6 +11,7 @@
 
 #include <raylib.h>
 
+#include "common.h"
 #include "config.h"
 #include "chat.h"
 #include "ted.h"
@@ -125,6 +126,7 @@ int main()
     SetConfigFlags(FLAG_WINDOW_RESIZABLE);
     InitWindow(DEFAULT_WIDTH, DEFAULT_HEIGHT, "Simple Telegram");
 
+    common::init();
     ted::init();
     chat::init();
     tgclient_init();
@@ -530,4 +532,3 @@ CMD_IMPL(sc, args)
 
 // TODO: Smile rendering
 // TODO: Chat panel
-// TODO: Font management in the 'config.h'

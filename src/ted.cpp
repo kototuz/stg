@@ -24,8 +24,6 @@ static wchar_t       ted_buffer[MAX_MSG_LEN];
 static size_t        ted_buffer_len = 0;
 static wchar_t       ted_placeholder[MAX_PLACEHOLDER_LEN];
 static size_t        ted_placeholder_len;
-static Font          ted_font;
-static size_t        ted_font_glyph_width;
 
 static void move_cursor_to_ptr(wchar_t *text_ptr)
 {
@@ -55,13 +53,6 @@ static void move_cursor_to_ptr(wchar_t *text_ptr)
 
 void ted::init()
 {
-    // Load ted font
-    ted_font = LoadFontEx(
-            TED_FONT_PATH, TED_FONT_SIZE,
-            nullptr, FONT_GLYPH_COUNT);
-    ted_font_glyph_width =
-        TED_FONT_SIZE / ted_font.baseSize * ted_font.glyphs[0].advanceX;
-
     ted_lines = common::Lines{};
     ted_lines.grow_one();
     ted_lines.items[0].text = ted_buffer;
@@ -88,7 +79,7 @@ void ted::render()
     // Render text editor rectangle
     Rectangle ted_rec = {};
     ted_rec.width = CHAT_VIEW_WIDTH - BoxModel::TED_LM - BoxModel::TED_RM;
-    ted_rec.height = ted_lines.len*TED_FONT_SIZE + BoxModel::TED_TP + BoxModel::TED_BP;
+    ted_rec.height = ted_lines.len*common::fonts[TED_FONT_ID].baseSize + BoxModel::TED_TP + BoxModel::TED_BP;
     ted_rec.x = common::get_chat_view_x() + BoxModel::TED_LM;
     ted_rec.y = GetScreenHeight() - ted_rec.height - BoxModel::TED_BM;
     DrawRectangleRounded(ted_rec, TED_REC_ROUNDNESS/ted_rec.height, TED_REC_SEGMENT_COUNT, TED_BG_COLOR);
@@ -97,19 +88,25 @@ void ted::render()
     Vector2 pos = { ted_rec.x + BoxModel::TED_LP, ted_rec.y + BoxModel::TED_TP };
     if (ted_buffer_len == 0) {
         DrawTextCodepoints(
-                ted_font,
+                common::fonts[TED_FONT_ID],
                 (int*)ted_placeholder, ted_placeholder_len,
-                pos, TED_FONT_SIZE, 0, TED_PLACEHOLDER_COLOR);
+                pos, common::fonts[TED_FONT_ID].baseSize, 0, TED_PLACEHOLDER_COLOR);
     } else {
         ted::set_placeholder(L"Message...");
-        common::draw_lines(ted_font, TED_FONT_SIZE, pos, ted_lines, TED_FG_COLOR);
+        common::draw_lines(
+                common::fonts[TED_FONT_ID],
+                common::fonts[TED_FONT_ID].baseSize,
+                pos, ted_lines, TED_FG_COLOR);
     }
 
     // Render cursor
-    Vector2 vec_to_pos = ted_lines.get_vec_to_pos(ted_font, TED_FONT_SIZE, ted_cursor_pos.row, ted_cursor_pos.col);
+    Vector2 vec_to_pos = ted_lines.get_vec_to_pos(
+            common::fonts[TED_FONT_ID],
+            common::fonts[TED_FONT_ID].baseSize,
+            ted_cursor_pos.row, ted_cursor_pos.col);
     pos.x += vec_to_pos.x;
     pos.y += vec_to_pos.y;
-    DrawLine(pos.x, pos.y, pos.x, pos.y+TED_FONT_SIZE, TED_CURSOR_COLOR);
+    DrawLine(pos.x, pos.y, pos.x, pos.y+common::fonts[TED_FONT_ID].baseSize, TED_CURSOR_COLOR);
 }
 
 void ted::try_cursor_motion(Motion m)
@@ -201,7 +198,7 @@ void ted::insert_symbol(int s)
     *text_curr_ptr = s;
     ted_buffer_len += 1;
 
-    ted_lines.recalc(ted_font, ted_buffer, ted_buffer_len, ted_max_line_width);
+    ted_lines.recalc(common::fonts[TED_FONT_ID], ted_buffer, ted_buffer_len, ted_max_line_width);
     move_cursor_to_ptr(text_curr_ptr+1);
 }
 
@@ -218,7 +215,7 @@ void ted::delete_symbols(size_t count)
     memmove(new_curr_text_ptr, text_curr_ptr, size);
     ted_buffer_len -= text_curr_ptr - new_curr_text_ptr;
 
-    ted_lines.recalc(ted_font, ted_buffer, ted_buffer_len, ted_max_line_width);
+    ted_lines.recalc(common::fonts[TED_FONT_ID], ted_buffer, ted_buffer_len, ted_max_line_width);
     move_cursor_to_ptr(new_curr_text_ptr);
 }
 
@@ -250,7 +247,7 @@ void ted::delete_line()
 
 float ted::get_height()
 {
-    return ted_lines.len*TED_FONT_SIZE +
+    return ted_lines.len*common::fonts[TED_FONT_ID].baseSize +
            BoxModel::TED_BM + BoxModel::TED_BP +
            BoxModel::TED_TP + BoxModel::TED_TM;
 }

@@ -1,6 +1,8 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+#include <raylib.h>
+
 #define DEFAULT_WIDTH  800
 #define DEFAULT_HEIGHT 600
 
@@ -9,6 +11,19 @@
 #define CHAT_VIEW_WIDTH   950.0f
 #define CHAT_BG_COLOR     CLITERAL(Color){0x12, 0x12, 0x12, 0xff}
 #define CHAT_SCROLL_SPEED 100.0f
+
+#define LIST_OF_FONTS \
+    X(ROBOTO_REGULAR, "resources/Roboto-Regular.ttf", 28.0f) \
+    X(ROBOTO_BOLD, "resources/Roboto-Bold.ttf", 28.0f) \
+
+namespace {
+    enum FontId {
+#define X(name, ...) name,
+        LIST_OF_FONTS
+#undef X
+        COUNT,
+    };
+}
 
 #define LIST_OF_BOX_MODELS \
     X(MSG, 2.0, 2.0, 0.0, 0.0, 10.0, 12.0, 11.0, 10.0)   \
@@ -41,10 +56,8 @@ const struct {
 };
 
 #define MSG_REPLY_BG_COLOR_IN_MY_MSG CLITERAL(Color){0x87, 0x75, 0xda, 0xff}
-#define MSG_AUTHOR_NAME_FONT_PATH    "resources/Roboto-Regular.ttf"
-#define MSG_AUTHOR_NAME_FONT_SIZE    28.0f
-#define MSG_TEXT_FONT_PATH           "resources/Roboto-Regular.ttf"
-#define MSG_TEXT_FONT_SIZE           30.0f
+#define MSG_SENDER_NAME_FONT_ID      FontId::ROBOTO_BOLD
+#define MSG_TEXT_FONT_ID             FontId::ROBOTO_REGULAR
 #define MSG_REC_ROUNDNESS            40
 #define MSG_REC_SEGMENT_COUNT        40
 #define MSG_TEXT_MARGIN_LEFT_RIGHT   20.0f
@@ -55,8 +68,7 @@ const struct {
 #define MSG_REPLY_MARGIN             8.0f
 #define MSG_WIDGET_DISTANCE          6.0f
 
-#define TED_FONT_PATH         "resources/Roboto-Regular.ttf"
-#define TED_FONT_SIZE         30.0f
+#define TED_FONT_ID           FontId::ROBOTO_REGULAR
 #define TED_BG_COLOR          CLITERAL(Color){0x21, 0x21, 0x21, 0xff}
 #define TED_FG_COLOR          WHITE
 #define TED_CURSOR_COLOR      WHITE
