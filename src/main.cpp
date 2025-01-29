@@ -352,9 +352,15 @@ static chat::MsgData tg_msg_to_chat_msg(td_api::object_ptr<td_api::message> tg_m
         tg_msg->reply_to_->get_id() == td_api::messageReplyToMessage::ID) {
         std::int64_t reply_to_id = static_cast<td_api::messageReplyToMessage&>(
                 *tg_msg->reply_to_).message_id_;
-        new_msg.reply_to = chat::find_msg(reply_to_id);
-        if (new_msg.reply_to == nullptr) {
+        chat::MsgData *local_reply_to = chat::find_msg(reply_to_id);
+        if (local_reply_to == nullptr) {
             std::wcout << "Could not reply to " << reply_to_id << ": not loaded\n";
+        } else {
+            new_msg.has_reply_to = true;
+            new_msg.reply_to.id = local_reply_to->id;
+            new_msg.reply_to.text = chat::WStr::copy(local_reply_to->text);
+            new_msg.reply_to.sender_name = local_reply_to->sender_name;
+            new_msg.reply_to.is_mine = local_reply_to->is_mine;
         }
     }
 

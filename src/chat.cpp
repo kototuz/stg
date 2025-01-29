@@ -12,7 +12,7 @@
 #include "ted.h"
 #include "config.h"
 
-#define MESSAGES_CAPACITY 5
+#define MESSAGES_CAPACITY 64
 
 #define LIST_OF_WIDGETS \
     X(SENDER_NAME, widget_sender_name_size_fn, widget_sender_name_render_fn) \
@@ -57,6 +57,15 @@ chat::WStr chat::WStr::from(const char *cstr)
 {
     WStr result = {};
     result.data = (wchar_t *) LoadCodepoints(cstr, (int *)&result.len);
+    return result;
+}
+
+chat::WStr chat::WStr::copy(WStr from)
+{
+    WStr result = {};
+    result.data = (wchar_t *) calloc(from.len, sizeof(wchar_t));
+    memcpy(result.data, from.data, from.len*sizeof(wchar_t));
+    result.len = from.len;
     return result;
 }
 
@@ -146,7 +155,7 @@ void chat::push_msg(MsgData msg_data)
         }
     }
 
-    if (msg_data.reply_to != nullptr) {
+    if (msg_data.has_reply_to) {
         new_msg.widgets[new_msg.widget_count++] = WidgetTag::REPLY;
     }
 
@@ -154,6 +163,7 @@ void chat::push_msg(MsgData msg_data)
 
     if (chat_message_count >= MESSAGES_CAPACITY) {
         UnloadCodepoints((int*)chat_messages[0].data.text.data);
+        if (chat_messages[0].data.has_reply_to) free(chat_messages[0].data.reply_to.text.data);
         memmove(&chat_messages[0], &chat_messages[1], (chat_message_count-1)*sizeof(Msg));
         chat_message_count -= 1;
     }
@@ -237,13 +247,13 @@ static Vector2 widget_reply_size_fn(chat::MsgData *msg_data, float max_line_len)
 {
     float reply_text_width = common::measure_wtext(
             common::fonts[MSG_TEXT_FONT_ID],
-            msg_data->reply_to->text.data,
-            msg_data->reply_to->text.len);
+            msg_data->reply_to.text.data,
+            msg_data->reply_to.text.len);
 
     float reply_sender_name_width = common::measure_wtext(
             common::fonts[MSG_SENDER_NAME_FONT_ID],
-            &msg_data->reply_to->sender_name[0],
-            msg_data->reply_to->sender_name.length());
+            &msg_data->reply_to.sender_name[0],
+            msg_data->reply_to.sender_name.length());
 
     float width = 
         (reply_text_width > reply_sender_name_width ?
@@ -269,8 +279,8 @@ static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float m
         reply_sender_name_color = msg_color_palette[1].fg_color;
         reply_bg_color = MSG_REPLY_BG_COLOR_IN_MY_MSG;
     } else {
-        reply_sender_name_color = msg_color_palette[msg_data->reply_to->is_mine].sender_name_color;
-        reply_bg_color = msg_color_palette[msg_data->reply_to->is_mine].reply_bg_color;
+        reply_sender_name_color = msg_color_palette[msg_data->reply_to.is_mine].sender_name_color;
+        reply_bg_color = msg_color_palette[msg_data->reply_to.is_mine].reply_bg_color;
     }
 
     DrawRectangleRounded(
@@ -282,15 +292,15 @@ static void widget_reply_render_fn(chat::MsgData *msg_data, Vector2 pos, float m
 
     common::draw_text_in_width(
             common::fonts[MSG_SENDER_NAME_FONT_ID], common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize,
-            pos, &msg_data->reply_to->sender_name[0],
-            msg_data->reply_to->sender_name.length(),
+            pos, &msg_data->reply_to.sender_name[0],
+            msg_data->reply_to.sender_name.length(),
             reply_sender_name_color, max_widget_width);
 
     pos.y += common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize;
 
     common::draw_text_in_width(
             common::fonts[MSG_TEXT_FONT_ID], common::fonts[MSG_TEXT_FONT_ID].baseSize,
-            pos, msg_data->reply_to->text.data,
-            msg_data->reply_to->text.len,
+            pos, msg_data->reply_to.text.data,
+            msg_data->reply_to.text.len,
             msg_color_palette[msg_data->is_mine].fg_color, max_widget_width);
 }

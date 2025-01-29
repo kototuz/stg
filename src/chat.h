@@ -10,6 +10,14 @@ namespace chat {
         wchar_t *data;
         size_t len;
         static WStr from(const char *cstr);
+        static WStr copy(WStr from);
+    };
+
+    struct MsgReplyData {
+        std::int64_t id;
+        WStr text;
+        std::wstring_view sender_name;
+        bool is_mine;
     };
 
     struct MsgData {
@@ -17,7 +25,8 @@ namespace chat {
         WStr text;
         std::wstring_view sender_name;
         bool is_mine;
-        MsgData *reply_to;
+        bool has_reply_to;
+        MsgReplyData reply_to;
     };
 
     void init();
