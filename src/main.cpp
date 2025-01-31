@@ -538,3 +538,4 @@ CMD_IMPL(sc, args)
 
 // TODO: Smile rendering
 // TODO: Chat panel
+// TODO: Chat recalculating only on resize

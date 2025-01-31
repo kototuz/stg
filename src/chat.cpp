@@ -43,7 +43,9 @@ LIST_OF_WIDGETS
 static Msg    chat_messages[MESSAGES_CAPACITY];
 static size_t chat_message_count = 0;
 static size_t chat_selection_offset = 0;
-static float  chat_scroll = 0;
+static float  msg_list_height = 0;
+static int    msg_begin_idx = 31; // FIXME: The number is hardcoded
+static float  offset = 0;
 static struct {
     Vector2 (*size_fn)  (chat::MsgData *msg_data, float max_widget_width);
     void    (*render_fn)(chat::MsgData *msg_data, Vector2 pos, float max_widget_width, float width);
@@ -71,7 +73,22 @@ chat::WStr chat::WStr::copy(WStr from)
 
 void chat::init() { }
 
-void chat::render(float bottom_margin, float mouse_wheel_move)
+static float calc_msg_height(size_t msg_idx, float max_msg_line_width)
+{
+    WidgetTag *widgets = chat_messages[msg_idx].widgets;
+    size_t widget_count = chat_messages[msg_idx].widget_count;
+    float result = (widget_count-1)*MSG_WIDGET_DISTANCE + BoxModel::MSG_TP + BoxModel::MSG_BP;
+    for (size_t j = 0; j < widget_count; j++) {
+        Vector2 size = widget_vtable[widgets[j]].size_fn(
+                &chat_messages[msg_idx].data,
+                max_msg_line_width);
+        result += size.y;
+    }
+
+    return result;
+}
+
+void chat::render(float bottom_margin, float scroll)
 {
     DrawFPS(0, 0);
 
@@ -85,11 +102,42 @@ void chat::render(float bottom_margin, float mouse_wheel_move)
 
     int selected_msg_idx = chat_message_count - chat_selection_offset;
 
+    // Calculate chat_view's start message idx and start y
+    float chat_view_bot_pos_y = height - bottom_margin;
+    float msg_list_bot_pos_y = chat_view_bot_pos_y + offset;
+    float y_with_scroll = msg_list_bot_pos_y + scroll;
+    DrawText(TextFormat("Y: %f", msg_list_bot_pos_y), 0, 24, 24, RAYWHITE);
+    DrawText(TextFormat("Height: %f", msg_list_height), 0, 48, 24, RAYWHITE);
+    DrawText(TextFormat("I: %zu", msg_begin_idx), 0, 72, 24, RAYWHITE);
+    DrawText(TextFormat("Scroll: %f", scroll), 0, 96, 24, RAYWHITE);
+    if (msg_list_height >= chat_view_bot_pos_y) {
+        if (y_with_scroll < chat_view_bot_pos_y && msg_begin_idx+1 == chat_message_count) {
+            msg_list_bot_pos_y = chat_view_bot_pos_y;
+        } else if (y_with_scroll < height && msg_begin_idx+1 < chat_message_count) {
+            msg_begin_idx += 1;
+            msg_list_bot_pos_y += scroll;
+            msg_list_bot_pos_y += MSG_DISTANCE + calc_msg_height(msg_begin_idx, max_msg_line_width);
+        } else if (y_with_scroll-msg_list_height > MSG_DISTANCE) {
+            msg_list_bot_pos_y = MSG_DISTANCE + msg_list_height;
+        } else {
+            msg_list_bot_pos_y += scroll;
+            for (; msg_begin_idx >= 0; msg_begin_idx--) {
+                float msg_height = calc_msg_height(msg_begin_idx, max_msg_line_width);
+                if (msg_list_bot_pos_y-msg_height-MSG_DISTANCE < height) break;
+                msg_list_bot_pos_y -= msg_height + MSG_DISTANCE;
+            }
+        }
+    }
+
+    size_t render_count = 0;
     float heights[WidgetTag::COUNT];
-    Rectangle msg_rect = { BoxModel::MSG_LM, height + chat_scroll - bottom_margin, 0, 0 };
-    for (int i = chat_message_count-1; i >= 0; i--) {
+    Rectangle msg_rect = { BoxModel::MSG_LM, msg_list_bot_pos_y, 0, 0 };
+    for (int i = msg_begin_idx; i >= 0; i--) {
+        if (msg_rect.y < 0) break;
+
         WidgetTag *widgets = chat_messages[i].widgets;
         size_t widget_count = chat_messages[i].widget_count;
+        render_count += 1;
 
         // Calculate message rectangle size
         msg_rect.width = 0;
@@ -107,7 +155,7 @@ void chat::render(float bottom_margin, float mouse_wheel_move)
         // Calculate position
         msg_rect.width += BoxModel::MSG_LP + BoxModel::MSG_RP;
         msg_rect.height += BoxModel::MSG_TP + BoxModel::MSG_BP;
-        msg_rect.y -= msg_rect.height + BoxModel::MSG_BM;
+        msg_rect.y -= msg_rect.height + MSG_DISTANCE;
         if (chat_messages[i].data.is_mine) {
             msg_rect.x = common::get_chat_view_x() + CHAT_VIEW_WIDTH - msg_rect.width - BoxModel::MSG_LM - BoxModel::MSG_RM;
         } else {
@@ -133,12 +181,11 @@ void chat::render(float bottom_margin, float mouse_wheel_move)
                     msg_rect.width - BoxModel::MSG_LP - BoxModel::MSG_RP);
             pos.y += heights[j] + MSG_WIDGET_DISTANCE;
         }
-
-        msg_rect.y -= BoxModel::MSG_TM;
     }
+    DrawText(TextFormat("Render count: %zu", render_count), 0, 144, 24, RAYWHITE);
 
-    if (chat_scroll+mouse_wheel_move >= 0 && msg_rect.y+mouse_wheel_move <= MSG_DISTANCE)
-        chat_scroll += mouse_wheel_move;
+    offset = msg_list_bot_pos_y - chat_view_bot_pos_y;
+    msg_list_height = msg_list_bot_pos_y - msg_rect.y;
 }
 
 void chat::push_msg(MsgData msg_data)

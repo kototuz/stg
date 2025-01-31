@@ -10,7 +10,7 @@
 
 #define CHAT_VIEW_WIDTH   950.0f
 #define CHAT_BG_COLOR     CLITERAL(Color){0x12, 0x12, 0x12, 0xff}
-#define CHAT_SCROLL_SPEED 100.0f
+#define CHAT_SCROLL_SPEED 100
 
 #define LIST_OF_FONTS \
     X(ROBOTO_REGULAR, "resources/Roboto-Regular.ttf", 28.0f) \
@@ -60,7 +60,7 @@ const struct {
 #define MSG_TEXT_FONT_ID             FontId::ROBOTO_REGULAR
 #define MSG_REC_ROUNDNESS            40
 #define MSG_REC_SEGMENT_COUNT        40
-#define MSG_DISTANCE                 10.0f
+#define MSG_DISTANCE                 4.0f
 #define MSG_SELECTED_COLOR           CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
 #define MSG_REPLY_PADDING            10.0f
 #define MSG_REPLY_REC_ROUNDNESS      30
