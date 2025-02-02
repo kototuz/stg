@@ -29,6 +29,7 @@ namespace common {
 
     void init();
     float get_chat_view_x();
+    // TODO: Draw functions should accept just 'font_id'
     void draw_text_in_width(Font font, int font_size, Vector2 pos, const wchar_t *text, size_t text_len, Color color, float in_width);
     void draw_lines(Font font, size_t font_size, Vector2 pos, Lines lines, Color color);
     float measure_wtext(Font font, const wchar_t *text, size_t text_len); // Function like 'MeasureText' but for 'wchar_t *'

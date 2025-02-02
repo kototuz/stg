@@ -1,41 +1,18 @@
-#ifndef CHAT_H
-#define CHAT_H
+#ifndef CHAT_H_
+#define CHAT_H_
 
-#include <string_view>
-
-#include <raylib.h>
+#include <td/telegram/Client.h>
+namespace td_api = td::td_api;
 
 namespace chat {
-    struct WStr {
-        wchar_t *data;
-        size_t len;
-        static WStr from(const char *cstr);
-        static WStr copy(WStr from);
-    };
-
-    struct MsgReplyData {
-        std::int64_t id;
-        WStr text;
-        std::wstring_view sender_name;
-        bool is_mine;
-    };
-
-    struct MsgData {
-        std::int64_t id;
-        WStr text;
-        std::wstring_view sender_name;
-        bool is_mine;
-        bool has_reply_to;
-        MsgReplyData reply_to;
-    };
-
     void init();
-    void render(float bottom_margin, float mouse_wheel_move);
-    void push_msg(MsgData msg);
-    MsgData *find_msg(std::int64_t msg_id);
-    void select_prev_msg();
-    void select_next_msg();
-    MsgData *get_selected_msg();
-}
+    void update();
+    void render();
+    void ted_set_placeholder(const wchar_t *text);
+
+    // Update handlers
+    void update_new_msg(td_api::object_ptr<td_api::updateNewMessage> u);
+    void update_msg_send_succeeded(td_api::object_ptr<td_api::updateMessageSendSucceeded> u);
+};
 
 #endif
