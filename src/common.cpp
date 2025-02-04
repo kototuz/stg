@@ -2,19 +2,30 @@
 #include <cstdio>
 #include <cstring>
 #include <cassert>
+#include <cwchar>
+#include <dirent.h>
 
 #include "common.h"
 #include "config.h"
 
+#define EMOJI_DIR_PATH "resources/emoji"
+// TODO: Emoji size should be adapted to font size
+#define EMOJI_SIZE     28.0f
+#define EMOJI_COUNT    1241
+
+struct Emoji {
+    wchar_t code;
+    Texture2D texture;
+};
+
 Font common::fonts[];
 
-static float get_glyph_width(Font font, wchar_t codepoint)
-{
-    int cp_idx = GetGlyphIndex(font, codepoint);
-    return (font.glyphs[cp_idx].advanceX == 0) ?
-           font.recs[cp_idx].width :
-           font.glyphs[cp_idx].advanceX;
-}
+static Emoji g_emoji[EMOJI_COUNT];
+
+static float get_glyph_width(Font font, wchar_t codepoint);
+static bool is_emoji(wchar_t codepoint);
+static Texture get_emoji_texture(wchar_t emoji_codepoint);
+static void draw_wtext(Font font, size_t font_size, Vector2 pos, const wchar_t *wtext, size_t wtext_len, Color color);
 
 void common::init()
 {
@@ -22,6 +33,33 @@ void common::init()
     fonts[FontId::name] = LoadFontEx(path, size, nullptr, FONT_GLYPH_COUNT);
     LIST_OF_FONTS
 #undef X
+
+    // Load emoji textures /////
+
+    DIR *emoji_dir;
+    if ((emoji_dir = opendir(EMOJI_DIR_PATH)) == nullptr) {
+        fprintf(stderr, "ERROR: Could not open '%s'\n", EMOJI_DIR_PATH);
+        exit(1);
+    }
+
+    struct dirent *dp;
+    size_t emoji_i = 0;
+    char path[] = EMOJI_DIR_PATH"/00000.png";
+    while ((dp = readdir(emoji_dir)) != nullptr) {
+        if (strcmp(dp->d_name, ".") == 0 || strcmp(dp->d_name, "..") == 0) continue;
+        strcpy(&path[sizeof(EMOJI_DIR_PATH)], dp->d_name);
+        Image emoji_img = LoadImage(path);
+        ImageResize(&emoji_img, EMOJI_SIZE, EMOJI_SIZE);
+        assert(emoji_i+1 < EMOJI_COUNT && "Increase 'EMOJI_COUNT'");
+        g_emoji[emoji_i++] = {
+            (wchar_t) strtol(dp->d_name, NULL, 16),
+            LoadTextureFromImage(emoji_img),
+        };
+
+        UnloadImage(emoji_img);
+    }
+
+    closedir(emoji_dir);
 }
 
 float common::get_chat_view_x()
@@ -42,7 +80,7 @@ void common::draw_text_in_width(
     for (size_t i = 0; i < text_len; i++) {
         float glyph_width = get_glyph_width(font, text[i]);
         if (width+glyph_width > in_width) {
-            DrawTextCodepoints(font, (const int*)text, i, pos, font_size, 0, color);
+            draw_wtext(font, font_size, pos, text, i, color);
             pos.x += width;
             DrawTextCodepoints(font, (const int*)L"...", 3, pos, font_size, 0, color);
             return;
@@ -51,18 +89,15 @@ void common::draw_text_in_width(
         width += glyph_width;
     }
 
-    DrawTextCodepoints(font, (const int*)text, text_len, pos, font_size, 0, color);
+    // If text fits in length draw it
+    draw_wtext(font, font_size, pos, text, text_len, color);
 }
 
 void common::draw_lines(Font font, size_t font_size, Vector2 pos, common::Lines lines, Color color)
 {
     size_t begin_x = pos.x;
     for (size_t i = 0; i < lines.len; i++) {
-        DrawTextCodepoints(
-                font,
-                (const int *)lines.items[i].text,
-                lines.items[i].len,
-                pos, font_size, 0, color);
+        draw_wtext(font, font_size, pos, lines.items[i].text, lines.items[i].len, color);
         pos.y += font_size;
         pos.x = begin_x;
     }
@@ -189,4 +224,51 @@ float common::measure_wtext(Font font, const wchar_t *text, size_t text_len)
     }
 
     return result;
+}
+
+// PRIVATE FUNCTION IMPLEMENTATIONS //////////////////////////////
+
+static float get_glyph_width(Font font, wchar_t codepoint)
+{
+    if (!is_emoji(codepoint)) {
+        int cp_idx = GetGlyphIndex(font, codepoint);
+        return (font.glyphs[cp_idx].advanceX == 0) ?
+            font.recs[cp_idx].width :
+            font.glyphs[cp_idx].advanceX;
+    } else {
+        return EMOJI_SIZE;
+    }
+}
+
+static bool is_emoji(wchar_t codepoint)
+{
+    for (size_t i = 0; i < EMOJI_COUNT; i++) {
+        if (codepoint == g_emoji[i].code) return true;
+    }
+
+    return false;
+}
+
+static Texture get_emoji_texture(wchar_t emoji_codepoint)
+{
+    for (size_t i = 0; i < EMOJI_COUNT; i++) {
+        if (g_emoji[i].code == emoji_codepoint) {
+            return g_emoji[i].texture;
+        }
+    }
+
+    assert(0 && "Unknown emoji");
+}
+
+static void draw_wtext(Font font, size_t font_size, Vector2 pos, const wchar_t *wtext, size_t wtext_len, Color color)
+{
+    for (size_t i = 0; i < wtext_len; i++) {
+        wchar_t codepoint = wtext[i];
+        if (is_emoji(codepoint)) {
+            DrawTextureV(get_emoji_texture(codepoint), pos, WHITE);
+        } else {
+            DrawTextCodepoint(font, codepoint, pos, font_size, color);
+        }
+        pos.x += get_glyph_width(font, codepoint);
+    }
 }

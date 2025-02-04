@@ -27,3 +27,8 @@ int main()
     CloseWindow();
     return 0;
 }
+
+// TODO: Chat panel
+// TODO: Recalculating messages only on window resize
+// TODO: A way to write emoji
+// TODO: Add new messages widgets (time, is message read)
