@@ -11,7 +11,7 @@
 #define EMOJI_DIR_PATH "resources/emoji"
 // TODO: Emoji size should be adapted to font size
 #define EMOJI_SIZE     28.0f
-#define EMOJI_COUNT    1240
+#define EMOJI_COUNT    1252
 
 struct Emoji {
     wchar_t code;
