@@ -12,18 +12,30 @@
 #define CHAT_BG_COLOR     CLITERAL(Color){0x12, 0x12, 0x12, 0xff}
 #define CHAT_SCROLL_SPEED 100
 
-#define LIST_OF_FONTS \
-    X(ROBOTO_REGULAR, "resources/Roboto-Regular.ttf", 28.0f) \
-    X(ROBOTO_BOLD, "resources/Roboto-Bold.ttf", 28.0f) \
+// NOTE: Specify integer not float (e.g. X(28) not X(28.0f))
+#define LIST_OF_EMOJI_SIZES \
+    X(28) \
+    X(25) \
 
-namespace {
-    enum FontId {
-#define X(name, ...) name,
-        LIST_OF_FONTS
+#define LIST_OF_FONTS \
+    X(ROBOTO_REGULAR_28, "resources/Roboto-Regular.ttf", 28.0f, EMOJI_SIZE_28) \
+    X(ROBOTO_BOLD_28, "resources/Roboto-Bold.ttf", 28.0f, EMOJI_SIZE_28) \
+    X(ROBOTO_REGULAR_25, "resources/Roboto-Regular.ttf", 25.0f, EMOJI_SIZE_25) \
+    X(ROBOTO_BOLD_25, "resources/Roboto-Bold.ttf", 25.0f, EMOJI_SIZE_25) \
+
+enum EmojiSize {
+#define X(emoji_size) EMOJI_SIZE_ ## emoji_size,
+    LIST_OF_EMOJI_SIZES
 #undef X
-        COUNT,
-    };
-}
+    EMOJI_SIZE_COUNT,
+};
+
+enum FontId {
+#define X(name, ...) FONT_ID_ ## name,
+    LIST_OF_FONTS
+#undef X
+    FONT_ID_COUNT,
+};
 
 #define LIST_OF_BOX_MODELS \
     X(MSG, 2.0, 2.0, 0.0, 0.0, 10.0, 12.0, 11.0, 10.0)   \
@@ -55,19 +67,21 @@ const struct {
     {{0x76, 0x6a, 0xc8, 0xff}, WHITE, {0xf6, 0x81, 0x36, 0xff}, {0x37, 0x2b, 0x24, 0xff}},
 };
 
-#define MSG_REPLY_BG_COLOR_IN_MY_MSG CLITERAL(Color){0x87, 0x75, 0xda, 0xff}
-#define MSG_SENDER_NAME_FONT_ID      FontId::ROBOTO_BOLD
-#define MSG_TEXT_FONT_ID             FontId::ROBOTO_REGULAR
-#define MSG_REC_ROUNDNESS            40
-#define MSG_REC_SEGMENT_COUNT        40
-#define MSG_DISTANCE                 4.0f
-#define MSG_SELECTED_COLOR           CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
-#define MSG_REPLY_PADDING            10.0f
-#define MSG_REPLY_REC_ROUNDNESS      30
-#define MSG_REPLY_REC_SEGMENT_COUNT  30
-#define MSG_WIDGET_DISTANCE          6.0f
+#define MSG_REPLY_BG_COLOR_IN_MY_MSG  CLITERAL(Color){0x87, 0x75, 0xda, 0xff}
+#define MSG_SENDER_NAME_FONT_ID       FONT_ID_ROBOTO_BOLD_28
+#define MSG_TEXT_FONT_ID              FONT_ID_ROBOTO_REGULAR_28
+#define MSG_REC_ROUNDNESS             40
+#define MSG_REC_SEGMENT_COUNT         40
+#define MSG_DISTANCE                  4.0f
+#define MSG_SELECTED_COLOR            CLITERAL(Color){0x08, 0x08, 0x08, 0xff}
+#define MSG_REPLY_TEXT_FONT_ID        FONT_ID_ROBOTO_REGULAR_25
+#define MSG_REPLY_SENDER_NAME_FONT_ID FONT_ID_ROBOTO_BOLD_25
+#define MSG_REPLY_PADDING             10.0f
+#define MSG_REPLY_REC_ROUNDNESS       30
+#define MSG_REPLY_REC_SEGMENT_COUNT   30
+#define MSG_WIDGET_DISTANCE           6.0f
 
-#define TED_FONT_ID           FontId::ROBOTO_REGULAR
+#define TED_FONT_ID           FONT_ID_ROBOTO_REGULAR_28
 #define TED_BG_COLOR          CLITERAL(Color){0x21, 0x21, 0x21, 0xff}
 #define TED_FG_COLOR          WHITE
 #define TED_CURSOR_COLOR      WHITE

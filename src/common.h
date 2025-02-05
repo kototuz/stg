@@ -19,20 +19,18 @@ namespace common {
         size_t len;
         size_t cap;
 
-        void grow_one();
-        float max_line_width(Font font);
-        void recalc(Font font, wchar_t *text, size_t text_len, float max_line_width);
-        Vector2 get_vec_to_pos(Font font, int font_size, size_t row, size_t col);
+        void    grow_one();
+        float   max_line_width(FontId font_id);
+        void    recalc(FontId font_id, wchar_t *text, size_t text_len, float max_line_width);
+        Vector2 get_vec_to_pos(FontId font_id, size_t row, size_t col);
     };
 
-    extern Font fonts[FontId::COUNT];
-
-    void init();
-    float get_chat_view_x();
-    // TODO: Draw functions should accept just 'font_id'
-    void draw_text_in_width(Font font, int font_size, Vector2 pos, const wchar_t *text, size_t text_len, Color color, float in_width);
-    void draw_lines(Font font, size_t font_size, Vector2 pos, Lines lines, Color color);
-    float measure_wtext(Font font, const wchar_t *text, size_t text_len); // Function like 'MeasureText' but for 'wchar_t *'
+    void  init();
+    void  draw_text_in_width(FontId font_id, Vector2 pos, const wchar_t *text, size_t text_len, Color color, float in_width);
+    void  draw_lines(FontId font_id, Vector2 pos, Lines lines, Color color);
+    void  draw_wtext(FontId font_id, Vector2 pos, const wchar_t *wtext, size_t wtext_len, Color color);
+    float font_size(FontId font_id);
+    float measure_wtext(FontId font_id, const wchar_t *text, size_t text_len); // Function like 'MeasureText' but for 'wchar_t *'
 }
 
 #endif

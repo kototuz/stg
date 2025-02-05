@@ -208,6 +208,7 @@ void chat::render()
     float scroll = GetMouseWheelMove() * CHAT_SCROLL_SPEED;
     float height = GetScreenHeight();
     float chat_view_x = (GetScreenWidth()/2) - (CHAT_VIEW_WIDTH/2);
+    float ted_font_size = common::font_size(TED_FONT_ID);
 
     { // Render msg list
         // Calculate max line width
@@ -219,7 +220,7 @@ void chat::render()
         int selected_msg_idx = chat_message_count - chat_selection_offset;
 
         float chat_view_bot_pos_y = height - 
-            (ted_lines.len*common::fonts[TED_FONT_ID].baseSize +
+            (ted_lines.len*ted_font_size +
             BoxModel::TED_BM + BoxModel::TED_BP +
             BoxModel::TED_TP + BoxModel::TED_TM);
 
@@ -313,7 +314,7 @@ void chat::render()
         // Render text editor rectangle
         Rectangle ted_rec = {};
         ted_rec.width = CHAT_VIEW_WIDTH - BoxModel::TED_LM - BoxModel::TED_RM;
-        ted_rec.height = ted_lines.len*common::fonts[TED_FONT_ID].baseSize + BoxModel::TED_TP + BoxModel::TED_BP;
+        ted_rec.height = ted_lines.len*ted_font_size + BoxModel::TED_TP + BoxModel::TED_BP;
         ted_rec.x = chat_view_x + BoxModel::TED_LM;
         ted_rec.y = GetScreenHeight() - ted_rec.height - BoxModel::TED_BM;
         DrawRectangleRounded(ted_rec, TED_REC_ROUNDNESS/ted_rec.height, TED_REC_SEGMENT_COUNT, TED_BG_COLOR);
@@ -321,26 +322,19 @@ void chat::render()
         // Render placeholder or text if it exists
         Vector2 pos = { ted_rec.x + BoxModel::TED_LP, ted_rec.y + BoxModel::TED_TP };
         if (ted_buffer_len == 0) {
-            DrawTextCodepoints(
-                    common::fonts[TED_FONT_ID],
-                    (int*)ted_placeholder, ted_placeholder_len,
-                    pos, common::fonts[TED_FONT_ID].baseSize, 0, TED_PLACEHOLDER_COLOR);
+            common::draw_wtext(TED_FONT_ID, pos, ted_placeholder,
+                    ted_placeholder_len, TED_PLACEHOLDER_COLOR);
         } else {
             ted_set_placeholder(L"Message...");
-            common::draw_lines(
-                    common::fonts[TED_FONT_ID],
-                    common::fonts[TED_FONT_ID].baseSize,
-                    pos, ted_lines, TED_FG_COLOR);
+            common::draw_lines(TED_FONT_ID, pos, ted_lines, TED_FG_COLOR);
         }
 
         // Render cursor
-        Vector2 vec_to_pos = ted_lines.get_vec_to_pos(
-                common::fonts[TED_FONT_ID],
-                common::fonts[TED_FONT_ID].baseSize,
+        Vector2 vec_to_pos = ted_lines.get_vec_to_pos(TED_FONT_ID,
                 ted_cursor_pos.row, ted_cursor_pos.col);
         pos.x += vec_to_pos.x;
         pos.y += vec_to_pos.y;
-        DrawLine(pos.x, pos.y, pos.x, pos.y+common::fonts[TED_FONT_ID].baseSize, TED_CURSOR_COLOR);
+        DrawLine(pos.x, pos.y, pos.x, pos.y+ted_font_size, TED_CURSOR_COLOR);
     }
 }
 
@@ -509,7 +503,7 @@ static void ted_insert_symbol(int s)
     *text_curr_ptr = s;
     ted_buffer_len += 1;
 
-    ted_lines.recalc(common::fonts[TED_FONT_ID], ted_buffer, ted_buffer_len, ted_max_line_width);
+    ted_lines.recalc(TED_FONT_ID, ted_buffer, ted_buffer_len, ted_max_line_width);
     ted_move_cursor_to_ptr(text_curr_ptr+1);
 }
 
@@ -526,7 +520,7 @@ static void ted_delete_symbols(size_t count)
     memmove(new_curr_text_ptr, text_curr_ptr, size);
     ted_buffer_len -= text_curr_ptr - new_curr_text_ptr;
 
-    ted_lines.recalc(common::fonts[TED_FONT_ID], ted_buffer, ted_buffer_len, ted_max_line_width);
+    ted_lines.recalc(TED_FONT_ID, ted_buffer, ted_buffer_len, ted_max_line_width);
     ted_move_cursor_to_ptr(new_curr_text_ptr);
 }
 
@@ -758,18 +752,17 @@ static Msg *find_msg(std::int64_t msg_id)
 static Vector2 widget_sender_name_size_fn(Msg *msg_data, float max_line_len)
 {
     float width = common::measure_wtext(
-            common::fonts[MSG_SENDER_NAME_FONT_ID],
+            MSG_SENDER_NAME_FONT_ID,
             &msg_data->sender_name[0],
             msg_data->sender_name.length());
 
-    return { width > max_line_len ? max_line_len : width, (float)common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize };
+    return { width > max_line_len ? max_line_len : width, common::font_size(MSG_SENDER_NAME_FONT_ID) };
 }
 
 static void widget_sender_name_render_fn(Msg *msg_data, Vector2 pos, float max_line_len, float)
 {
     common::draw_text_in_width(
-            common::fonts[MSG_SENDER_NAME_FONT_ID],
-            common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize,
+            MSG_SENDER_NAME_FONT_ID,
             pos, &msg_data->sender_name[0], msg_data->sender_name.length(),
             msg_color_palette[msg_data->is_mine].sender_name_color, max_line_len);
 }
@@ -778,30 +771,29 @@ static common::Lines text_lines = {};
 static Vector2 widget_text_size_fn(Msg *msg_data, float max_line_len)
 {
     text_lines.recalc(
-            common::fonts[MSG_TEXT_FONT_ID],
+            MSG_TEXT_FONT_ID,
             msg_data->text.data, msg_data->text.len,
             max_line_len);
 
-    return { text_lines.max_line_width(common::fonts[MSG_TEXT_FONT_ID]), (float)text_lines.len*common::fonts[MSG_TEXT_FONT_ID].baseSize };
+    return { text_lines.max_line_width(MSG_TEXT_FONT_ID), (float)text_lines.len*common::font_size(MSG_TEXT_FONT_ID) };
 }
 
 static void widget_text_render_fn(Msg *msg_data, Vector2 pos, float, float)
 {
     common::draw_lines(
-            common::fonts[MSG_TEXT_FONT_ID],
-            common::fonts[MSG_TEXT_FONT_ID].baseSize,
-            pos, text_lines, msg_color_palette[msg_data->is_mine].fg_color);
+            MSG_TEXT_FONT_ID, pos, text_lines,
+            msg_color_palette[msg_data->is_mine].fg_color);
 }
 
 static Vector2 widget_reply_size_fn(Msg *msg_data, float max_line_len)
 {
     float reply_text_width = common::measure_wtext(
-            common::fonts[MSG_TEXT_FONT_ID],
+            MSG_TEXT_FONT_ID,
             msg_data->reply_to.text.data,
             msg_data->reply_to.text.len);
 
     float reply_sender_name_width = common::measure_wtext(
-            common::fonts[MSG_SENDER_NAME_FONT_ID],
+            MSG_SENDER_NAME_FONT_ID,
             &msg_data->reply_to.sender_name[0],
             msg_data->reply_to.sender_name.length());
 
@@ -813,15 +805,17 @@ static Vector2 widget_reply_size_fn(Msg *msg_data, float max_line_len)
     return {
         width > max_line_len ? max_line_len : width,
               2*MSG_REPLY_PADDING +
-                  common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize +
-                  common::fonts[MSG_TEXT_FONT_ID].baseSize };
+                  common::font_size(MSG_SENDER_NAME_FONT_ID) +
+                  common::font_size(MSG_TEXT_FONT_ID) };
 }
 
 static void widget_reply_render_fn(Msg *msg_data, Vector2 pos, float max_widget_width, float width)
 {
+    max_widget_width -= 2*MSG_REPLY_PADDING;
+
     Rectangle reply_rect = { pos.x, pos.y, width, 2*MSG_REPLY_PADDING +
-        common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize +
-        common::fonts[MSG_TEXT_FONT_ID].baseSize };
+        common::font_size(MSG_REPLY_SENDER_NAME_FONT_ID) +
+        common::font_size(MSG_REPLY_TEXT_FONT_ID) };
 
     Color reply_sender_name_color;
     Color reply_bg_color;
@@ -841,15 +835,15 @@ static void widget_reply_render_fn(Msg *msg_data, Vector2 pos, float max_widget_
     pos.y += MSG_REPLY_PADDING;
 
     common::draw_text_in_width(
-            common::fonts[MSG_SENDER_NAME_FONT_ID], common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize,
+            MSG_REPLY_SENDER_NAME_FONT_ID,
             pos, &msg_data->reply_to.sender_name[0],
             msg_data->reply_to.sender_name.length(),
             reply_sender_name_color, max_widget_width);
 
-    pos.y += common::fonts[MSG_SENDER_NAME_FONT_ID].baseSize;
+    pos.y += common::font_size(MSG_REPLY_SENDER_NAME_FONT_ID);
 
     common::draw_text_in_width(
-            common::fonts[MSG_TEXT_FONT_ID], common::fonts[MSG_TEXT_FONT_ID].baseSize,
+            MSG_REPLY_TEXT_FONT_ID,
             pos, msg_data->reply_to.text.data,
             msg_data->reply_to.text.len,
             msg_color_palette[msg_data->is_mine].fg_color, max_widget_width);
