@@ -246,6 +246,7 @@ void common::draw_wtext(FontId font_id, Vector2 pos, const wchar_t *wtext, size_
 {
     for (size_t i = 0; i < wtext_len; i++) {
         wchar_t codepoint = wtext[i];
+        if (codepoint == 0xfe0f) continue; // skip 'variation selector'
         if (is_emoji(codepoint)) {
             DrawTextureV(get_emoji_texture(font_id, codepoint), pos, WHITE);
         } else {
