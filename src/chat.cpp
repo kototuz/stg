@@ -126,6 +126,7 @@ static Msg *find_msg(std::int64_t msg_id);
 
 // Declare util functions
 static std::int64_t to_int64_t(std::wstring_view text);
+static bool         wchar_from_hexstr(const wchar_t *s, size_t len, wchar_t *result);
 
 // Declare widget functions
 #define X(tag_name, size_fn, render_fn) \
@@ -546,6 +547,33 @@ static void ted_insert_symbol(int s)
     *text_curr_ptr = s;
     ted_buffer_len += 1;
 
+    // Interpret unicode literals
+    if (s == ':') {
+        bool has_insertion_begin = false;
+        size_t insertion_begin = 0;
+        for (size_t i = 0; i < ted_buffer_len; i++) {
+            if (ted_buffer[i] == ':') {
+                if (!has_insertion_begin) {
+                    has_insertion_begin = true;
+                    insertion_begin = i;
+                } else {
+                    wchar_t code;
+                    wchar_t *insertion = &ted_buffer[insertion_begin+1];
+                    if (!wchar_from_hexstr(insertion,
+                                i - insertion_begin - 1, &code)) {
+                        has_insertion_begin = false;
+                    } else {
+                        ted_buffer[insertion_begin] = code;
+                        text_curr_ptr = &ted_buffer[insertion_begin];
+                        size_t size = ted_buffer_len - i - 1;
+                        memmove(&ted_buffer[insertion_begin+1], &ted_buffer[i+1], size);
+                        ted_buffer_len -= i - insertion_begin;
+                    }
+                }
+            }
+        }
+    }
+
     ted_lines.recalc(TED_FONT_ID, ted_buffer, ted_buffer_len, ted_max_line_width);
     ted_move_cursor_to_ptr(text_curr_ptr+1);
 }
@@ -770,6 +798,23 @@ static std::int64_t to_int64_t(std::wstring_view text)
     }
 
     return res * factor;
+}
+
+static bool wchar_from_hexstr(const wchar_t *s, size_t len, wchar_t *result)
+{
+    wchar_t n = 0;
+    for (size_t i = 0; i < len; i++) {
+        if ('a' <= s[i] && s[i] <= 'f') {
+            n = n*16 + s[i]-87;
+        } else if ('0' <= s[i] && s[i] <= '9') {
+            n = n*16 + s[i]-'0';
+        } else {
+            return false;
+        }
+    }
+
+    *result = n;
+    return true;
 }
 
 static void load_msgs(td_api::object_ptr<td_api::messages> msgs)
