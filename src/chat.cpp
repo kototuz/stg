@@ -15,8 +15,8 @@
 #include "config.h"
 #include "tgclient.h"
 
-#define MESSAGES_CAPACITY 64
-#define MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT 30
+#define MESSAGES_CAPACITY 10
+#define MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT MESSAGES_CAPACITY
 
 #define TED_MAX_MSG_LEN         4096
 #define TED_MAX_PLACEHOLDER_LEN 32
@@ -41,13 +41,6 @@ typedef std::wstring_view Arg;
 
 typedef void (*Command)();
 
-enum WidgetTag {
-#define X(tag_name, ...) tag_name,
-    LIST_OF_WIDGETS
-#undef X
-    COUNT,
-};
-
 struct WStr {
     wchar_t *data;
     size_t len;
@@ -69,13 +62,27 @@ struct WStr {
     }
 };
 
+enum WidgetTag {
+#define X(tag_name, ...) tag_name,
+    LIST_OF_WIDGETS
+#undef X
+        COUNT,
+};
+
+struct Widget {
+    WidgetTag tag;
+    Vector2 size;
+};
+
 struct Msg {
     std::int64_t id;
     WStr text;
+    common::Lines text_lines;
     std::wstring_view sender_name;
     bool is_mine;
+    Vector2 size;
     size_t widget_count;
-    WidgetTag widgets[WidgetTag::COUNT];
+    Widget widgets[WidgetTag::COUNT];
     bool has_reply_to;
     struct {
         std::int64_t id;
@@ -113,7 +120,6 @@ static void ted_clear();
 static void ted_run_command();
 
 // Declare message list functions
-static float calc_msg_height(size_t msg_idx, float max_msg_line_width);
 static void load_msgs(td_api::object_ptr<td_api::messages> msgs);
 static void push_msg(td_api::object_ptr<td_api::message> msg);
 static Msg *find_msg(std::int64_t msg_id);
@@ -123,8 +129,8 @@ static std::int64_t to_int64_t(std::wstring_view text);
 
 // Declare widget functions
 #define X(tag_name, size_fn, render_fn) \
-    static Vector2 size_fn(Msg*, float); \
-    static void render_fn(Msg*, Vector2, float, float);
+    static Vector2 size_fn(Msg*); \
+    static void render_fn(Msg*, Vector2, float);
 LIST_OF_WIDGETS
 #undef X
 
@@ -135,12 +141,10 @@ static Msg    chat_messages[MESSAGES_CAPACITY];
 static size_t chat_message_count = 0;
 static size_t chat_selection_offset = 0;
 static std::int64_t chat_id = 0;
-static float  msg_list_height = 0;
-static int    msg_begin_idx = MSG_COUNT_TO_LOAD_WHEN_OPEN_CHAT-1;
-static float  offset = 0;
+static float constexpr max_msg_widget_width = floor(CHAT_VIEW_WIDTH - BoxModel::MSG_LM - BoxModel::MSG_LP - BoxModel::MSG_RP - BoxModel::MSG_RM);
 static struct {
-    Vector2 (*size_fn)  (Msg *msg_data, float max_widget_width);
-    void    (*render_fn)(Msg *msg_data, Vector2 pos, float max_widget_width, float width);
+    Vector2 (*size_fn)  (Msg *msg_data);
+    void    (*render_fn)(Msg *msg_data, Vector2 pos, float width);
 } widget_vtable[] = {
 #define X(tag_name, size_fn, render_fn) { size_fn, render_fn },
     LIST_OF_WIDGETS
@@ -205,104 +209,143 @@ void chat::render()
 
     DrawText(TextFormat("Count: %zu\n", chat_message_count), 0, 24, 24, RAYWHITE);
 
-    float scroll = GetMouseWheelMove() * CHAT_SCROLL_SPEED;
-    float height = GetScreenHeight();
-    float chat_view_x = (GetScreenWidth()/2) - (CHAT_VIEW_WIDTH/2);
     float ted_font_size = common::font_size(TED_FONT_ID);
+    Vector2 chat_view_pos = {
+        (GetScreenWidth()/2) - (CHAT_VIEW_WIDTH/2),
+        GetScreenHeight() - (ted_lines.len*ted_font_size +
+                BoxModel::TED_BM + BoxModel::TED_BP +
+                BoxModel::TED_TP + BoxModel::TED_TM)
+    };
 
     { // Render msg list
-        // Calculate max line width
-        float max_msg_line_width =
-            floor(CHAT_VIEW_WIDTH -
-                    BoxModel::MSG_LM - BoxModel::MSG_LP -
-                    BoxModel::MSG_RP - BoxModel::MSG_RM);
-
-        int selected_msg_idx = chat_message_count - chat_selection_offset;
-
-        float chat_view_bot_pos_y = height - 
-            (ted_lines.len*ted_font_size +
-            BoxModel::TED_BM + BoxModel::TED_BP +
-            BoxModel::TED_TP + BoxModel::TED_TM);
-
-        // TODO: I think it's terrible
-        // ==================
-        // Calculate chat_view's start message idx and start y
-        float msg_list_bot_pos_y = chat_view_bot_pos_y + offset;
-        float y_with_scroll = msg_list_bot_pos_y + scroll;
-        if (msg_list_height >= chat_view_bot_pos_y) {
-            if (y_with_scroll < chat_view_bot_pos_y && msg_begin_idx+1 == chat_message_count) {
-                msg_list_bot_pos_y = chat_view_bot_pos_y;
-            } else if (y_with_scroll < height && msg_begin_idx+1 < chat_message_count) {
-                msg_begin_idx += 1;
-                msg_list_bot_pos_y += scroll;
-                msg_list_bot_pos_y += MSG_DISTANCE + calc_msg_height(msg_begin_idx, max_msg_line_width);
-            } else if (y_with_scroll-msg_list_height > MSG_DISTANCE) {
-                msg_list_bot_pos_y = MSG_DISTANCE + msg_list_height;
+        Vector2 msg_pos = { 0, chat_view_pos.y };
+        Msg *end = &chat_messages[-1];
+        Msg *selected_msg = chat_selection_offset > 0 ?
+            &chat_messages[chat_message_count-chat_selection_offset] :
+            nullptr;
+        for (Msg *it = &chat_messages[chat_message_count-1]; it != end; it--) {
+            // Calculate message position
+            msg_pos.y -= it->size.y + MSG_DISTANCE;
+            if (it->is_mine) {
+                msg_pos.x = chat_view_pos.x + CHAT_VIEW_WIDTH - it->size.x - BoxModel::MSG_LM - BoxModel::MSG_RM;
             } else {
-                msg_list_bot_pos_y += scroll;
-                for (; msg_begin_idx >= 0; msg_begin_idx--) {
-                    float msg_height = calc_msg_height(msg_begin_idx, max_msg_line_width);
-                    if (msg_list_bot_pos_y-msg_height-MSG_DISTANCE < height) break;
-                    msg_list_bot_pos_y -= msg_height + MSG_DISTANCE;
-                }
-            }
-        }
-
-        float heights[WidgetTag::COUNT];
-        Rectangle msg_rect = { BoxModel::MSG_LM, msg_list_bot_pos_y, 0, 0 };
-        for (int i = msg_begin_idx; i >= 0; i--) {
-            if (msg_rect.y < 0) break;
-
-            WidgetTag *widgets = chat_messages[i].widgets;
-            size_t widget_count = chat_messages[i].widget_count;
-
-            // Calculate message rectangle size
-            msg_rect.width = 0;
-            msg_rect.height = (widget_count-1) * MSG_WIDGET_DISTANCE;
-            size_t height_count = 0;
-            for (size_t j = 0; j < widget_count; j++) {
-                Vector2 size = widget_vtable[widgets[j]].size_fn(
-                        &chat_messages[i],
-                        max_msg_line_width);
-                heights[height_count++] = size.y;
-                msg_rect.height += size.y;
-                if (size.x > msg_rect.width) msg_rect.width = size.x;
+                msg_pos.x = chat_view_pos.x + BoxModel::MSG_LM;
             }
 
-            // Calculate position
-            msg_rect.width += BoxModel::MSG_LP + BoxModel::MSG_RP;
-            msg_rect.height += BoxModel::MSG_TP + BoxModel::MSG_BP;
-            msg_rect.y -= msg_rect.height + MSG_DISTANCE;
-            if (chat_messages[i].is_mine) {
-                msg_rect.x = chat_view_x + CHAT_VIEW_WIDTH - msg_rect.width - BoxModel::MSG_LM - BoxModel::MSG_RM;
-            } else {
-                msg_rect.x = chat_view_x + BoxModel::MSG_LM;
-            }
-
-            // Render selection if the message is selected
-            if (i == selected_msg_idx) {
-                DrawRectangle(0, msg_rect.y, GetScreenWidth(), msg_rect.height, MSG_SELECTED_COLOR);
+            if (it == selected_msg) {
+                DrawRectangle(0, msg_pos.y, GetScreenWidth(), it->size.y, MSG_SELECTED_COLOR);
             }
 
             // Render message rectangle
             DrawRectangleRounded(
-                    msg_rect, MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT,
-                    msg_color_palette[chat_messages[i].is_mine].bg_color);
+                    { msg_pos.x, msg_pos.y, it->size.x, it->size.y },
+                    MSG_REC_ROUNDNESS/it->size.y, MSG_REC_SEGMENT_COUNT,
+                    msg_color_palette[it->is_mine].bg_color);
 
             // Render message widgets
-            Vector2 pos = { msg_rect.x+BoxModel::MSG_LP, msg_rect.y+BoxModel::MSG_TP };
-            for (size_t j = 0; j < widget_count; j++) {
-                widget_vtable[widgets[j]].render_fn(
-                        &chat_messages[i],
-                        pos, max_msg_line_width,
-                        msg_rect.width - BoxModel::MSG_LP - BoxModel::MSG_RP);
-                pos.y += heights[j] + MSG_WIDGET_DISTANCE;
+            float curr_max_msg_widget_width = it->size.x - BoxModel::MSG_LP - BoxModel::MSG_RP;
+            Vector2 widget_pos = { msg_pos.x+BoxModel::MSG_LP, msg_pos.y+BoxModel::MSG_TP };
+            for (size_t i = 0; i < it->widget_count; i++) {
+                widget_vtable[it->widgets[i].tag].render_fn(it, widget_pos,
+                        curr_max_msg_widget_width);
+                widget_pos.y += it->widgets[i].size.y;
             }
         }
-
-        offset = msg_list_bot_pos_y - chat_view_bot_pos_y;
-        msg_list_height = msg_list_bot_pos_y - msg_rect.y;
     }
+
+    /* { // Render msg list */
+    /*     // Calculate max line width */
+    /*     float max_msg_line_width = */
+    /*         floor(CHAT_VIEW_WIDTH - */
+    /*                 BoxModel::MSG_LM - BoxModel::MSG_LP - */
+    /*                 BoxModel::MSG_RP - BoxModel::MSG_RM); */
+    /**/
+    /*     int selected_msg_idx = chat_message_count - chat_selection_offset; */
+    /**/
+    /*     float chat_view_bot_pos_y = height -  */
+    /*         (ted_lines.len*ted_font_size + */
+    /*         BoxModel::TED_BM + BoxModel::TED_BP + */
+    /*         BoxModel::TED_TP + BoxModel::TED_TM); */
+    /**/
+    /*     // TODO: I think it's terrible */
+    /*     // ================== */
+    /*     // Calculate chat_view's start message idx and start y */
+    /*     float msg_list_bot_pos_y = chat_view_bot_pos_y + offset; */
+    /*     float y_with_scroll = msg_list_bot_pos_y + scroll; */
+    /*     if (msg_list_height >= chat_view_bot_pos_y) { */
+    /*         if (y_with_scroll < chat_view_bot_pos_y && msg_begin_idx+1 == chat_message_count) { */
+    /*             msg_list_bot_pos_y = chat_view_bot_pos_y; */
+    /*         } else if (y_with_scroll < height && msg_begin_idx+1 < chat_message_count) { */
+    /*             msg_begin_idx += 1; */
+    /*             msg_list_bot_pos_y += scroll; */
+    /*             msg_list_bot_pos_y += MSG_DISTANCE + calc_msg_height(msg_begin_idx, max_msg_line_width); */
+    /*         } else if (y_with_scroll-msg_list_height > MSG_DISTANCE) { */
+    /*             msg_list_bot_pos_y = MSG_DISTANCE + msg_list_height; */
+    /*         } else { */
+    /*             msg_list_bot_pos_y += scroll; */
+    /*             for (; msg_begin_idx >= 0; msg_begin_idx--) { */
+    /*                 float msg_height = calc_msg_height(msg_begin_idx, max_msg_line_width); */
+    /*                 if (msg_list_bot_pos_y-msg_height-MSG_DISTANCE < height) break; */
+    /*                 msg_list_bot_pos_y -= msg_height + MSG_DISTANCE; */
+    /*             } */
+    /*         } */
+    /*     } */
+    /**/
+    /*     float heights[WidgetTag::COUNT]; */
+    /*     Rectangle msg_rect = { BoxModel::MSG_LM, msg_list_bot_pos_y, 0, 0 }; */
+    /*     for (int i = msg_begin_idx; i >= 0; i--) { */
+    /*         if (msg_rect.y < 0) break; */
+    /**/
+    /*         WidgetTag *widgets = chat_messages[i].widgets; */
+    /*         size_t widget_count = chat_messages[i].widget_count; */
+    /**/
+    /*         // Calculate message rectangle size */
+    /*         msg_rect.width = 0; */
+    /*         msg_rect.height = (widget_count-1) * MSG_WIDGET_DISTANCE; */
+    /*         size_t height_count = 0; */
+    /*         for (size_t j = 0; j < widget_count; j++) { */
+    /*             Vector2 size = widget_vtable[widgets[j]].size_fn( */
+    /*                     &chat_messages[i], */
+    /*                     max_msg_line_width); */
+    /*             heights[height_count++] = size.y; */
+    /*             msg_rect.height += size.y; */
+    /*             if (size.x > msg_rect.width) msg_rect.width = size.x; */
+    /*         } */
+    /**/
+    /*         // Calculate position */
+    /*         msg_rect.width += BoxModel::MSG_LP + BoxModel::MSG_RP; */
+    /*         msg_rect.height += BoxModel::MSG_TP + BoxModel::MSG_BP; */
+    /*         msg_rect.y -= msg_rect.height + MSG_DISTANCE; */
+    /*         if (chat_messages[i].is_mine) { */
+    /*             msg_rect.x = chat_view_x + CHAT_VIEW_WIDTH - msg_rect.width - BoxModel::MSG_LM - BoxModel::MSG_RM; */
+    /*         } else { */
+    /*             msg_rect.x = chat_view_x + BoxModel::MSG_LM; */
+    /*         } */
+    /**/
+    /*         // Render selection if the message is selected */
+    /*         if (i == selected_msg_idx) { */
+    /*             DrawRectangle(0, msg_rect.y, GetScreenWidth(), msg_rect.height, MSG_SELECTED_COLOR); */
+    /*         } */
+    /**/
+    /*         // Render message rectangle */
+    /*         DrawRectangleRounded( */
+    /*                 msg_rect, MSG_REC_ROUNDNESS/msg_rect.height, MSG_REC_SEGMENT_COUNT, */
+    /*                 msg_color_palette[chat_messages[i].is_mine].bg_color); */
+    /**/
+    /*         // Render message widgets */
+    /*         Vector2 pos = { msg_rect.x+BoxModel::MSG_LP, msg_rect.y+BoxModel::MSG_TP }; */
+    /*         for (size_t j = 0; j < widget_count; j++) { */
+    /*             widget_vtable[widgets[j]].render_fn( */
+    /*                     &chat_messages[i], */
+    /*                     pos, max_msg_line_width, */
+    /*                     msg_rect.width - BoxModel::MSG_LP - BoxModel::MSG_RP); */
+    /*             pos.y += heights[j] + MSG_WIDGET_DISTANCE; */
+    /*         } */
+    /*     } */
+    /**/
+    /*     offset = msg_list_bot_pos_y - chat_view_bot_pos_y; */
+    /*     msg_list_height = msg_list_bot_pos_y - msg_rect.y; */
+    /* } */
 
     { // Render text editor
         // Calculate max line
@@ -315,7 +358,7 @@ void chat::render()
         Rectangle ted_rec = {};
         ted_rec.width = CHAT_VIEW_WIDTH - BoxModel::TED_LM - BoxModel::TED_RM;
         ted_rec.height = ted_lines.len*ted_font_size + BoxModel::TED_TP + BoxModel::TED_BP;
-        ted_rec.x = chat_view_x + BoxModel::TED_LM;
+        ted_rec.x = chat_view_pos.x + BoxModel::TED_LM;
         ted_rec.y = GetScreenHeight() - ted_rec.height - BoxModel::TED_BM;
         DrawRectangleRounded(ted_rec, TED_REC_ROUNDNESS/ted_rec.height, TED_REC_SEGMENT_COUNT, TED_BG_COLOR);
 
@@ -653,7 +696,7 @@ static void push_msg(td_api::object_ptr<td_api::message> tg_msg)
     if (new_msg.is_mine) {
         chat_selection_offset = 0;
     } else {
-        new_msg.widgets[new_msg.widget_count++] = WidgetTag::SENDER_NAME;
+        new_msg.widgets[new_msg.widget_count++].tag = WidgetTag::SENDER_NAME;
         if (chat_selection_offset != 0) {
             chat_selection_offset += 1;
         }
@@ -673,11 +716,21 @@ static void push_msg(td_api::object_ptr<td_api::message> tg_msg)
             new_msg.reply_to.text = WStr::copy(local_reply_to->text);
             new_msg.reply_to.sender_name = local_reply_to->sender_name;
             new_msg.reply_to.is_mine = local_reply_to->is_mine;
-            new_msg.widgets[new_msg.widget_count++] = WidgetTag::REPLY;
+            new_msg.widgets[new_msg.widget_count++].tag = WidgetTag::REPLY;
         }
     }
 
-    new_msg.widgets[new_msg.widget_count++] = WidgetTag::TEXT;
+    new_msg.widgets[new_msg.widget_count++].tag = WidgetTag::TEXT;
+
+    // Calculate message sizes
+    for (size_t i = 0; i < new_msg.widget_count; i++) {
+        Vector2 size = widget_vtable[new_msg.widgets[i].tag].size_fn(&new_msg);
+        new_msg.widgets[i].size = size;
+        new_msg.size.y += size.y;
+        if (size.x > new_msg.size.x) new_msg.size.x = size.x;
+    }
+    new_msg.size.y += BoxModel::MSG_TP + BoxModel::MSG_BP;
+    new_msg.size.x += BoxModel::MSG_LP + BoxModel::MSG_RP;
 
     if (chat_message_count >= MESSAGES_CAPACITY) {
         UnloadCodepoints((int*)chat_messages[0].text.data);
@@ -689,20 +742,20 @@ static void push_msg(td_api::object_ptr<td_api::message> tg_msg)
     chat_messages[chat_message_count++] = new_msg;
 }
 
-static float calc_msg_height(size_t msg_idx, float max_msg_line_width)
-{
-    WidgetTag *widgets = chat_messages[msg_idx].widgets;
-    size_t widget_count = chat_messages[msg_idx].widget_count;
-    float result = (widget_count-1)*MSG_WIDGET_DISTANCE + BoxModel::MSG_TP + BoxModel::MSG_BP;
-    for (size_t j = 0; j < widget_count; j++) {
-        Vector2 size = widget_vtable[widgets[j]].size_fn(
-                &chat_messages[msg_idx],
-                max_msg_line_width);
-        result += size.y;
-    }
-
-    return result;
-}
+/* static float calc_msg_height(size_t msg_idx, float max_msg_line_width) */
+/* { */
+/*     WidgetTag *widgets = chat_messages[msg_idx].widgets; */
+/*     size_t widget_count = chat_messages[msg_idx].widget_count; */
+/*     float result = (widget_count-1)*MSG_WIDGET_DISTANCE + BoxModel::MSG_TP + BoxModel::MSG_BP; */
+/*     for (size_t j = 0; j < widget_count; j++) { */
+/*         Vector2 size = widget_vtable[widgets[j]].size_fn( */
+/*                 &chat_messages[msg_idx], */
+/*                 max_msg_line_width); */
+/*         result += size.y; */
+/*     } */
+/**/
+/*     return result; */
+/* } */
 
 static std::int64_t to_int64_t(std::wstring_view text)
 {
@@ -749,43 +802,42 @@ static Msg *find_msg(std::int64_t msg_id)
 
 // WIDGET FUNCTIONS IMPLS ///////////////
 
-static Vector2 widget_sender_name_size_fn(Msg *msg_data, float max_line_len)
+static Vector2 widget_sender_name_size_fn(Msg *msg_data)
 {
     float width = common::measure_wtext(
             MSG_SENDER_NAME_FONT_ID,
             &msg_data->sender_name[0],
             msg_data->sender_name.length());
 
-    return { width > max_line_len ? max_line_len : width, common::font_size(MSG_SENDER_NAME_FONT_ID) };
+    return { width > max_msg_widget_width ? max_msg_widget_width : width, common::font_size(MSG_SENDER_NAME_FONT_ID) };
 }
 
-static void widget_sender_name_render_fn(Msg *msg_data, Vector2 pos, float max_line_len, float)
+static void widget_sender_name_render_fn(Msg *msg_data, Vector2 pos, float)
 {
     common::draw_text_in_width(
             MSG_SENDER_NAME_FONT_ID,
             pos, &msg_data->sender_name[0], msg_data->sender_name.length(),
-            msg_color_palette[msg_data->is_mine].sender_name_color, max_line_len);
+            msg_color_palette[msg_data->is_mine].sender_name_color, max_msg_widget_width);
 }
 
-static common::Lines text_lines = {};
-static Vector2 widget_text_size_fn(Msg *msg_data, float max_line_len)
+static Vector2 widget_text_size_fn(Msg *msg_data)
 {
-    text_lines.recalc(
+    msg_data->text_lines.recalc(
             MSG_TEXT_FONT_ID,
             msg_data->text.data, msg_data->text.len,
-            max_line_len);
+            max_msg_widget_width);
 
-    return { text_lines.max_line_width(MSG_TEXT_FONT_ID), (float)text_lines.len*common::font_size(MSG_TEXT_FONT_ID) };
+    return { msg_data->text_lines.max_line_width(MSG_TEXT_FONT_ID), (float)msg_data->text_lines.len*common::font_size(MSG_TEXT_FONT_ID) };
 }
 
-static void widget_text_render_fn(Msg *msg_data, Vector2 pos, float, float)
+static void widget_text_render_fn(Msg *msg_data, Vector2 pos, float)
 {
     common::draw_lines(
-            MSG_TEXT_FONT_ID, pos, text_lines,
+            MSG_TEXT_FONT_ID, pos, msg_data->text_lines,
             msg_color_palette[msg_data->is_mine].fg_color);
 }
 
-static Vector2 widget_reply_size_fn(Msg *msg_data, float max_line_len)
+static Vector2 widget_reply_size_fn(Msg *msg_data)
 {
     float reply_text_width = common::measure_wtext(
             MSG_TEXT_FONT_ID,
@@ -803,15 +855,15 @@ static Vector2 widget_reply_size_fn(Msg *msg_data, float max_line_len)
          reply_sender_name_width) + 2*MSG_REPLY_PADDING;
 
     return {
-        width > max_line_len ? max_line_len : width,
+        width > max_msg_widget_width ? max_msg_widget_width : width,
               2*MSG_REPLY_PADDING +
                   common::font_size(MSG_SENDER_NAME_FONT_ID) +
                   common::font_size(MSG_TEXT_FONT_ID) };
 }
 
-static void widget_reply_render_fn(Msg *msg_data, Vector2 pos, float max_widget_width, float width)
+static void widget_reply_render_fn(Msg *msg_data, Vector2 pos, float width)
 {
-    max_widget_width -= 2*MSG_REPLY_PADDING;
+    float max_reply_content_width = max_msg_widget_width - 2*MSG_REPLY_PADDING;
 
     Rectangle reply_rect = { pos.x, pos.y, width, 2*MSG_REPLY_PADDING +
         common::font_size(MSG_REPLY_SENDER_NAME_FONT_ID) +
@@ -838,7 +890,7 @@ static void widget_reply_render_fn(Msg *msg_data, Vector2 pos, float max_widget_
             MSG_REPLY_SENDER_NAME_FONT_ID,
             pos, &msg_data->reply_to.sender_name[0],
             msg_data->reply_to.sender_name.length(),
-            reply_sender_name_color, max_widget_width);
+            reply_sender_name_color, max_reply_content_width);
 
     pos.y += common::font_size(MSG_REPLY_SENDER_NAME_FONT_ID);
 
@@ -846,7 +898,7 @@ static void widget_reply_render_fn(Msg *msg_data, Vector2 pos, float max_widget_
             MSG_REPLY_TEXT_FONT_ID,
             pos, msg_data->reply_to.text.data,
             msg_data->reply_to.text.len,
-            msg_color_palette[msg_data->is_mine].fg_color, max_widget_width);
+            msg_color_palette[msg_data->is_mine].fg_color, max_reply_content_width);
 }
 
 // COMMAND FUNCTION IMPLEMENTATIONS //////////
