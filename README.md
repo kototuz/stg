@@ -1,8 +1,12 @@
-# stg
-Simple TeleGram
-
 > [!WARNING]
+> The project is unfinished
 > STG is created for my own use => it is not perfect
+
+# Preview
+
+<p align=center>
+  <img src="./preview.png">
+</p>
 
 ## Build
 
@@ -19,21 +23,22 @@ $ git clone --recurse-submodules https://github.com/kototuz/stg.git
 Go to the project directory and build it
 
 ``` console
-$ make
+$ make API_ID=<your_api_id> API_HASH=<your_api_hash>
 ```
 
 Run
 
 ``` console
-$ ./build/stg <your_api_id> <your_api_hash>
+$ ./build/stg
 ```
 
 ## Description
 
-At the moment **stg** supports only few operations: login and logout.
-You can write messages and they will be displayed in the chat but you can't
-send messages yet.
+Available *stg* commands that you can type in the editor:
+- `:c` - print chats in terminal
+- `:sc <chat_id>` - select chat
+- `:l` - logout
 
-To logout write `:l` in the editor
+You also can type emoji unicodes by using `:<unicode>:`
 
 All customization is located in `src/config.h`
